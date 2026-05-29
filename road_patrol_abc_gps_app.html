@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>道路劣化パトロール記録</title>
+
+<!-- 地図プレビュー用。通信できない環境では地図だけ表示されませんが、記録・CSV出力は動作します。 -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+ integrity="sha256-p4NxAoJBhIINfQ/0Wp6VS4EXPd1qHXfS0G+E2YRzA0o=" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+ integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+<style>
+:root{
+  --bg:#f6f7fb;
+  --panel:#ffffff;
+  --text:#1f2937;
+  --muted:#6b7280;
+  --line:#e5e7eb;
+  --main:#6d5dfc;
+  --main-dark:#5145cd;
+  --ok:#16a34a;
+  --warn:#f59e0b;
+  --danger:#dc2626;
+  --blue:#2563eb;
+  --shadow:0 8px 26px rgba(31,41,55,.10);
+  --radius:18px;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans JP",sans-serif;
+  line-height:1.45;
+}
+header{
+  position:sticky;top:0;z-index:20;
+  background:linear-gradient(135deg,#5b4cf0,#8377ff);
+  color:#fff;
+  padding:14px 14px calc(12px + env(safe-area-inset-top));
+  box-shadow:var(--shadow);
+}
+header h1{font-size:18px;margin:0 0 4px;font-weight:800}
+header .sub{font-size:12px;opacity:.92}
+main{max-width:980px;margin:0 auto;padding:12px 12px 88px}
+.card{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  padding:14px;
+  margin:12px 0;
+}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media(max-width:640px){.grid2,.grid3{grid-template-columns:1fr}}
+.status{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:8px;
+}
+@media(max-width:720px){.status{grid-template-columns:repeat(2,1fr)}}
+.stat{
+  background:#f9fafb;
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:10px;
+}
+.stat .label{font-size:11px;color:var(--muted)}
+.stat .value{font-size:15px;font-weight:800;margin-top:2px;word-break:break-all}
+button,.fileLabel{
+  appearance:none;
+  border:0;
+  border-radius:14px;
+  padding:12px 14px;
+  font-size:15px;
+  font-weight:800;
+  cursor:pointer;
+  background:#eef2ff;
+  color:#3730a3;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  min-height:44px;
+}
+button:active,.fileLabel:active{transform:translateY(1px)}
+button.primary{background:var(--main);color:#fff}
+button.dark{background:#111827;color:#fff}
+button.gray{background:#e5e7eb;color:#374151}
+button.green{background:var(--ok);color:#fff}
+button.yellow{background:var(--warn);color:#fff}
+button.red{background:var(--danger);color:#fff}
+button.blue{background:var(--blue);color:#fff}
+button.ghost{background:#fff;border:1px solid var(--line);color:#374151}
+button.small{padding:8px 10px;font-size:12px;min-height:34px;border-radius:10px}
+.bigEval{
+  min-height:76px;
+  flex-direction:column;
+  font-size:18px;
+}
+.bigEval span{font-size:11px;font-weight:700;opacity:.92}
+input,select,textarea{
+  width:100%;
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:12px;
+  font-size:15px;
+  background:#fff;
+  color:var(--text);
+}
+textarea{min-height:74px;resize:vertical}
+label{font-size:12px;font-weight:800;color:#374151;margin-bottom:4px;display:block}
+.formGrid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+@media(max-width:640px){.formGrid{grid-template-columns:1fr}}
+.notice{
+  background:#fffbeb;
+  border:1px solid #fde68a;
+  color:#92400e;
+  border-radius:14px;
+  padding:10px 12px;
+  font-size:13px;
+}
+.good{
+  background:#ecfdf5;
+  border:1px solid #bbf7d0;
+  color:#166534;
+}
+.bad{
+  background:#fef2f2;
+  border:1px solid #fecaca;
+  color:#991b1b;
+}
+.tabs{
+  display:flex;gap:8px;overflow:auto;padding-bottom:2px;
+}
+.tabBtn{white-space:nowrap}
+.tabBtn.active{background:var(--main);color:#fff}
+.tab{display:none}
+.tab.active{display:block}
+#map{
+  width:100%;
+  height:430px;
+  border-radius:16px;
+  border:1px solid var(--line);
+  overflow:hidden;
+  background:#e5e7eb;
+}
+.tableWrap{overflow:auto;border:1px solid var(--line);border-radius:14px}
+table{border-collapse:collapse;width:100%;font-size:13px;background:#fff}
+th,td{border-bottom:1px solid var(--line);padding:8px;vertical-align:top;white-space:nowrap}
+th{position:sticky;top:0;background:#f9fafb;text-align:left;z-index:1}
+.badge{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:28px;height:24px;border-radius:999px;color:#fff;font-weight:900;
+}
+.badge.A{background:var(--ok)}
+.badge.B{background:var(--warn)}
+.badge.C{background:var(--danger)}
+.badge.N{background:#6b7280}
+.footerBar{
+  position:fixed;left:0;right:0;bottom:0;z-index:30;
+  background:rgba(255,255,255,.94);
+  backdrop-filter:blur(10px);
+  border-top:1px solid var(--line);
+  padding:8px 12px calc(8px + env(safe-area-inset-bottom));
+}
+.footerInner{max-width:980px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+@media(max-width:640px){.footerInner{grid-template-columns:repeat(2,1fr)}}
+.kbd{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:6px;padding:1px 5px}
+.hidden{display:none!important}
+#photoPreview{
+  max-width:100%;
+  max-height:180px;
+  border-radius:12px;
+  border:1px solid var(--line);
+  display:none;
+  margin-top:8px;
+}
+.counter{
+  font-size:12px;color:var(--muted);
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>道路劣化パトロール記録</h1>
+  <div class="sub">助手席用：GPS位置にA/B/C評価・写真・メモを保存し、CSV/GeoJSONで出力</div>
+</header>
+
+<main>
+  <section class="card">
+    <div class="tabs" role="tablist">
+      <button class="tabBtn active" data-tab="record">記録</button>
+      <button class="tabBtn" data-tab="maptab">地図</button>
+      <button class="tabBtn" data-tab="list">一覧</button>
+      <button class="tabBtn" data-tab="settings">設定</button>
+    </div>
+  </section>
+
+  <section id="record" class="tab active">
+    <div id="geoWarning" class="notice">
+      GPSを使うには、スマホで位置情報を許可してください。iPhone/Androidでは、HTTPS配信ページでの利用が安定します。記録操作は必ず助手席担当が行ってください。
+    </div>
+
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <strong>現在地ステータス</strong>
+          <div class="counter" id="watchStatus">未取得</div>
+        </div>
+        <div class="row">
+          <button id="btnStartGPS" class="primary">GPS開始</button>
+          <button id="btnStopGPS" class="gray">停止</button>
+        </div>
+      </div>
+      <div class="status" style="margin-top:10px">
+        <div class="stat"><div class="label">緯度</div><div class="value" id="latNow">-</div></div>
+        <div class="stat"><div class="label">経度</div><div class="value" id="lngNow">-</div></div>
+        <div class="stat"><div class="label">精度</div><div class="value" id="accNow">-</div></div>
+        <div class="stat"><div class="label">速度</div><div class="value" id="speedNow">-</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <strong>評価を記録</strong>
+      <div class="counter">ボタンを押した瞬間のGPS・時刻・評価を保存します。</div>
+      <div class="grid3" style="margin-top:10px">
+        <button class="bigEval green" data-eval="A">A<span>問題なし／経過観察</span></button>
+        <button class="bigEval yellow" data-eval="B">B<span>劣化あり／補修候補</span></button>
+        <button class="bigEval red" data-eval="C">C<span>危険・早期対応候補</span></button>
+      </div>
+
+      <div class="formGrid" style="margin-top:12px">
+        <div>
+          <label for="category">種別</label>
+          <select id="category">
+            <option value="">未選択</option>
+            <option>舗装ひび割れ</option>
+            <option>ポットホール</option>
+            <option>段差・沈下</option>
+            <option>側溝・蓋</option>
+            <option>区画線</option>
+            <option>街路樹・草木</option>
+            <option>安全施設</option>
+            <option>その他</option>
+          </select>
+        </div>
+        <div>
+          <label for="side">位置補足</label>
+          <select id="side">
+            <option value="">未選択</option>
+            <option>進行方向左側</option>
+            <option>進行方向右側</option>
+            <option>車道中央</option>
+            <option>歩道側</option>
+            <option>交差点付近</option>
+            <option>その他</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-top:10px">
+        <label for="memo">メモ</label>
+        <textarea id="memo" placeholder="例：マンホール周辺に沈下。雨天時に水たまり。"></textarea>
+      </div>
+
+      <div class="formGrid" style="margin-top:10px">
+        <div>
+          <label>写真</label>
+          <label class="fileLabel" for="photoInput">写真を選択</label>
+          <input id="photoInput" class="hidden" type="file" accept="image/*" capture="environment">
+          <img id="photoPreview" alt="写真プレビュー">
+          <div class="counter" id="photoStatus">写真なし</div>
+        </div>
+        <div>
+          <label for="routeName">巡回名・路線名</label>
+          <input id="routeName" placeholder="例：5月パトロール／主要地方道〇〇">
+          <div style="height:8px"></div>
+          <button id="btnClearInputs" class="ghost" style="width:100%">メモ・写真をクリア</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <strong>走行軌跡・区間記録</strong>
+      <div class="counter">走行中のGPS点を保存します。区間評価を開始すると、終了までの軌跡をA/B/C区間として保存できます。</div>
+      <div class="grid2" style="margin-top:10px">
+        <button id="btnTrack" class="blue">走行軌跡 ON</button>
+        <button id="btnTrackStop" class="gray">走行軌跡 OFF</button>
+      </div>
+      <div class="grid3" style="margin-top:10px">
+        <button class="segStart green" data-eval="A">A区間開始</button>
+        <button class="segStart yellow" data-eval="B">B区間開始</button>
+        <button class="segStart red" data-eval="C">C区間開始</button>
+      </div>
+      <div class="grid2" style="margin-top:10px">
+        <button id="btnSegEnd" class="dark">区間終了</button>
+        <button id="btnSegCancel" class="ghost">区間取消</button>
+      </div>
+      <div id="segmentStatus" class="notice good" style="margin-top:10px">区間記録なし</div>
+    </div>
+  </section>
+
+  <section id="maptab" class="tab">
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <strong>地図プレビュー</strong>
+          <div class="counter">通信できる環境ではOpenStreetMap上に記録点・区間を表示します。</div>
+        </div>
+        <button id="btnRefreshMap" class="primary">地図更新</button>
+      </div>
+      <div id="map" style="margin-top:10px"></div>
+      <div class="row" style="margin-top:10px">
+        <button id="btnOpenGoogle" class="ghost">現在地をGoogleマップで開く</button>
+        <button id="btnFitMap" class="ghost">記録範囲に移動</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="list" class="tab">
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <strong>記録一覧</strong>
+          <div class="counter"><span id="recordCount">0</span>件</div>
+        </div>
+        <div class="row">
+          <button id="btnDeleteSelected" class="gray">選択削除</button>
+          <button id="btnDeleteAll" class="red">全削除</button>
+        </div>
+      </div>
+      <div class="tableWrap" style="margin-top:10px">
+        <table>
+          <thead>
+            <tr>
+              <th>選択</th>
+              <th>評価</th>
+              <th>時刻</th>
+              <th>種別</th>
+              <th>位置補足</th>
+              <th>メモ</th>
+              <th>緯度</th>
+              <th>経度</th>
+              <th>精度</th>
+              <th>写真</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="recordRows"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="settings" class="tab">
+    <div class="card">
+      <strong>評価基準メモ</strong>
+      <div class="formGrid" style="margin-top:10px">
+        <div>
+          <label for="defA">A評価</label>
+          <textarea id="defA">問題なし、または通常パトロールで経過観察する程度。</textarea>
+        </div>
+        <div>
+          <label for="defB">B評価</label>
+          <textarea id="defB">劣化あり。補修候補、次回確認、写真記録が望ましい箇所。</textarea>
+        </div>
+        <div>
+          <label for="defC">C評価</label>
+          <textarea id="defC">安全性に影響する可能性があり、早期現地確認・対応候補とする箇所。</textarea>
+        </div>
+        <div>
+          <label for="trackInterval">走行軌跡の保存間隔・秒</label>
+          <input id="trackInterval" type="number" min="2" max="60" value="5">
+          <div style="height:8px"></div>
+          <button id="btnSaveSettings" class="primary" style="width:100%">設定保存</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <strong>利用メモ</strong>
+      <div class="notice" style="margin-top:10px">
+        <p><b>位置情報について：</b>スマホのブラウザでは、HTTPS配信されたページでGPSが安定します。ローカルHTMLを直接開く場合、端末やブラウザによってGPSが使えないことがあります。</p>
+        <p><b>保存先：</b>データはこの端末・このブラウザのLocalStorageに保存されます。別端末には自動同期されません。定期的にCSV/GeoJSONで出力してください。</p>
+        <p><b>地図：</b>地図表示はLeaflet + OpenStreetMapタイルを使用します。インターネット通信がない環境では、地図だけ表示されない場合があります。</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="footerBar">
+  <div class="footerInner">
+    <button id="btnExportCsv" class="green">CSV出力</button>
+    <button id="btnExportGeo" class="blue">GeoJSON出力</button>
+    <button id="btnBackup" class="ghost">バックアップ</button>
+    <button id="btnImport" class="ghost">取込</button>
+    <input id="importFile" type="file" class="hidden" accept=".json,application/json">
+  </div>
+</div>
+
+<script>
+(function(){
+  const LS_KEY = "road_patrol_records_v1";
+  const LS_SETTINGS = "road_patrol_settings_v1";
+
+  let records = loadRecords();
+  let settings = loadSettings();
+
+  let watchId = null;
+  let currentPos = null;
+  let currentPhoto = null;
+
+  let trackEnabled = false;
+  let lastTrackSavedAt = 0;
+
+  let activeSegment = null;
+
+  let map = null;
+  let layerGroup = null;
+
+  const $ = sel => document.querySelector(sel);
+  const $$ = sel => Array.from(document.querySelectorAll(sel));
+
+  function uid(){
+    return "r_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,8);
+  }
+
+  function nowIso(){
+    return new Date().toISOString();
+  }
+
+  function fmtDate(iso){
+    try{
+      const d = new Date(iso);
+      return d.toLocaleString("ja-JP", {hour12:false});
+    }catch(e){ return iso; }
+  }
+
+  function loadRecords(){
+    try{
+      return JSON.parse(localStorage.getItem(LS_KEY) || "[]");
+    }catch(e){
+      return [];
+    }
+  }
+
+  function saveRecords(){
+    localStorage.setItem(LS_KEY, JSON.stringify(records));
+    renderList();
+    updateCount();
+  }
+
+  function loadSettings(){
+    const defaults = {
+      defA:"問題なし、または通常パトロールで経過観察する程度。",
+      defB:"劣化あり。補修候補、次回確認、写真記録が望ましい箇所。",
+      defC:"安全性に影響する可能性があり、早期現地確認・対応候補とする箇所。",
+      trackInterval:5
+    };
+    try{
+      return Object.assign(defaults, JSON.parse(localStorage.getItem(LS_SETTINGS) || "{}"));
+    }catch(e){
+      return defaults;
+    }
+  }
+
+  function saveSettings(){
+    settings.defA = $("#defA").value;
+    settings.defB = $("#defB").value;
+    settings.defC = $("#defC").value;
+    settings.trackInterval = Math.max(2, Number($("#trackInterval").value || 5));
+    localStorage.setItem(LS_SETTINGS, JSON.stringify(settings));
+    toast("設定を保存しました。", "good");
+  }
+
+  function applySettings(){
+    $("#defA").value = settings.defA;
+    $("#defB").value = settings.defB;
+    $("#defC").value = settings.defC;
+    $("#trackInterval").value = settings.trackInterval;
+  }
+
+  function toast(msg, type){
+    const el = $("#geoWarning");
+    el.textContent = msg;
+    el.className = "notice" + (type === "good" ? " good" : type === "bad" ? " bad" : "");
+    window.setTimeout(() => {
+      el.className = "notice";
+    }, 3800);
+  }
+
+  function startGPS(){
+    if(!("geolocation" in navigator)){
+      toast("このブラウザでは位置情報が使えません。", "bad");
+      return;
+    }
+    $("#watchStatus").textContent = "GPS取得中...";
+    watchId = navigator.geolocation.watchPosition(
+      pos => {
+        currentPos = pos;
+        updatePositionView(pos);
+        maybeSaveTrackPoint(pos);
+      },
+      err => {
+        let msg = "GPS取得に失敗しました。";
+        if(err.code === 1) msg = "位置情報の利用が許可されていません。ブラウザ/端末設定を確認してください。";
+        if(err.code === 2) msg = "現在地を取得できません。屋外や窓際で再試行してください。";
+        if(err.code === 3) msg = "GPS取得がタイムアウトしました。";
+        $("#watchStatus").textContent = msg;
+        toast(msg, "bad");
+      },
+      { enableHighAccuracy:true, maximumAge:1000, timeout:15000 }
+    );
+  }
+
+  function stopGPS(){
+    if(watchId !== null){
+      navigator.geolocation.clearWatch(watchId);
+      watchId = null;
+    }
+    $("#watchStatus").textContent = "停止中";
+  }
+
+  function updatePositionView(pos){
+    const c = pos.coords;
+    $("#latNow").textContent = c.latitude.toFixed(7);
+    $("#lngNow").textContent = c.longitude.toFixed(7);
+    $("#accNow").textContent = c.accuracy ? Math.round(c.accuracy) + " m" : "-";
+    $("#speedNow").textContent = c.speed ? (c.speed * 3.6).toFixed(1) + " km/h" : "-";
+    $("#watchStatus").textContent = "取得中 " + new Date(pos.timestamp).toLocaleTimeString("ja-JP", {hour12:false});
+  }
+
+  function positionToPoint(pos){
+    const c = pos.coords;
+    return {
+      lat: Number(c.latitude),
+      lng: Number(c.longitude),
+      accuracy: c.accuracy == null ? "" : Number(c.accuracy),
+      speed: c.speed == null ? "" : Number(c.speed),
+      heading: c.heading == null ? "" : Number(c.heading),
+      gpsTime: new Date(pos.timestamp).toISOString()
+    };
+  }
+
+  function requireCurrentPos(){
+    if(!currentPos){
+      toast("まだGPS現在地がありません。先に「GPS開始」を押してください。", "bad");
+      return null;
+    }
+    return positionToPoint(currentPos);
+  }
+
+  function addEvalRecord(evalValue){
+    const p = requireCurrentPos();
+    if(!p) return;
+
+    const rec = {
+      id: uid(),
+      type: "point",
+      createdAt: nowIso(),
+      eval: evalValue,
+      category: $("#category").value,
+      side: $("#side").value,
+      memo: $("#memo").value.trim(),
+      routeName: $("#routeName").value.trim(),
+      photo: currentPhoto,
+      point: p
+    };
+    records.push(rec);
+    saveRecords();
+    toast(evalValue + "評価を記録しました。", "good");
+  }
+
+  function maybeSaveTrackPoint(pos){
+    if(!trackEnabled && !activeSegment) return;
+    const now = Date.now();
+    const interval = Math.max(2, Number(settings.trackInterval || 5)) * 1000;
+    if(now - lastTrackSavedAt < interval) return;
+    lastTrackSavedAt = now;
+
+    const p = positionToPoint(pos);
+
+    if(trackEnabled){
+      records.push({
+        id: uid(),
+        type: "track",
+        createdAt: nowIso(),
+        eval: "",
+        category: "走行軌跡",
+        side: "",
+        memo: "",
+        routeName: $("#routeName").value.trim(),
+        photo: null,
+        point: p
+      });
+      saveRecords();
+    }
+
+    if(activeSegment){
+      activeSegment.points.push(p);
+      updateSegmentStatus();
+    }
+  }
+
+  function startSegment(evalValue){
+    const p = requireCurrentPos();
+    if(!p) return;
+    activeSegment = {
+      eval: evalValue,
+      startedAt: nowIso(),
+      category: $("#category").value || "区間評価",
+      side: $("#side").value,
+      memo: $("#memo").value.trim(),
+      routeName: $("#routeName").value.trim(),
+      points: [p]
+    };
+    updateSegmentStatus();
+    toast(evalValue + "区間を開始しました。", "good");
+  }
+
+  function endSegment(){
+    if(!activeSegment){
+      toast("開始中の区間がありません。", "bad");
+      return;
+    }
+    const p = requireCurrentPos();
+    if(p) activeSegment.points.push(p);
+
+    if(activeSegment.points.length < 2){
+      toast("区間点が不足しています。少し移動してから終了してください。", "bad");
+      return;
+    }
+
+    records.push({
+      id: uid(),
+      type: "segment",
+      createdAt: nowIso(),
+      eval: activeSegment.eval,
+      category: activeSegment.category,
+      side: activeSegment.side,
+      memo: activeSegment.memo,
+      routeName: activeSegment.routeName,
+      photo: null,
+      startedAt: activeSegment.startedAt,
+      endedAt: nowIso(),
+      points: activeSegment.points
+    });
+    activeSegment = null;
+    saveRecords();
+    updateSegmentStatus();
+    toast("区間を保存しました。", "good");
+  }
+
+  function cancelSegment(){
+    activeSegment = null;
+    updateSegmentStatus();
+    toast("区間記録を取り消しました。");
+  }
+
+  function updateSegmentStatus(){
+    const el = $("#segmentStatus");
+    if(!activeSegment){
+      el.className = "notice good";
+      el.textContent = "区間記録なし";
+      return;
+    }
+    el.className = "notice";
+    el.textContent = activeSegment.eval + "区間記録中：保存点 " + activeSegment.points.length + "点";
+  }
+
+  function clearInputs(){
+    $("#memo").value = "";
+    $("#photoInput").value = "";
+    currentPhoto = null;
+    $("#photoPreview").style.display = "none";
+    $("#photoPreview").src = "";
+    $("#photoStatus").textContent = "写真なし";
+  }
+
+  function handlePhoto(file){
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const maxW = 900;
+        const scale = Math.min(1, maxW / img.width);
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.72);
+        currentPhoto = {
+          name: file.name,
+          type: "image/jpeg",
+          dataUrl: dataUrl
+        };
+        $("#photoPreview").src = dataUrl;
+        $("#photoPreview").style.display = "block";
+        $("#photoStatus").textContent = "写真あり：" + file.name;
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function renderList(){
+    const tbody = $("#recordRows");
+    tbody.innerHTML = "";
+    records.slice().reverse().forEach(rec => {
+      const point = rec.point || (rec.points && rec.points[0]) || {};
+      const tr = document.createElement("tr");
+      const badgeClass = rec.eval || "N";
+      const kind = rec.type === "segment" ? "区間" : rec.type === "track" ? "軌跡" : "点";
+      tr.innerHTML = `
+        <td><input type="checkbox" class="selRec" data-id="${rec.id}" style="width:auto"></td>
+        <td><span class="badge ${badgeClass || "N"}">${rec.eval || "T"}</span><div class="counter">${kind}</div></td>
+        <td>${escapeHtml(fmtDate(rec.createdAt))}</td>
+        <td>${escapeHtml(rec.category || "")}</td>
+        <td>${escapeHtml(rec.side || "")}</td>
+        <td>${escapeHtml(rec.memo || "")}</td>
+        <td>${point.lat != null ? Number(point.lat).toFixed(7) : ""}</td>
+        <td>${point.lng != null ? Number(point.lng).toFixed(7) : ""}</td>
+        <td>${point.accuracy !== "" && point.accuracy != null ? Math.round(point.accuracy) + "m" : ""}</td>
+        <td>${rec.photo ? "あり" : ""}</td>
+        <td><button class="small ghost jumpMap" data-id="${rec.id}">地図</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    $$(".jumpMap").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const rec = records.find(r => r.id === btn.dataset.id);
+        showTab("maptab");
+        setTimeout(() => {
+          refreshMap();
+          jumpToRecord(rec);
+        }, 100);
+      });
+    });
+  }
+
+  function updateCount(){
+    $("#recordCount").textContent = records.length;
+  }
+
+  function deleteSelected(){
+    const ids = $$(".selRec:checked").map(x => x.dataset.id);
+    if(ids.length === 0){
+      toast("削除する記録を選択してください。", "bad");
+      return;
+    }
+    if(!confirm(ids.length + "件を削除しますか？")) return;
+    records = records.filter(r => !ids.includes(r.id));
+    saveRecords();
+    refreshMap();
+  }
+
+  function deleteAll(){
+    if(!confirm("すべての記録を削除しますか？この操作は元に戻せません。")) return;
+    records = [];
+    saveRecords();
+    refreshMap();
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+  }
+
+  function csvEscape(v){
+    const s = v == null ? "" : String(v);
+    return '"' + s.replace(/"/g,'""') + '"';
+  }
+
+  function exportCSV(){
+    const headers = [
+      "id","type","createdAt","startedAt","endedAt","eval","routeName","category","side","memo",
+      "lat","lng","accuracy_m","speed_mps","heading","gpsTime","pointCount","photoName"
+    ];
+    const rows = records.map(rec => {
+      const p = rec.point || (rec.points && rec.points[0]) || {};
+      return [
+        rec.id, rec.type, rec.createdAt, rec.startedAt || "", rec.endedAt || "", rec.eval || "",
+        rec.routeName || "", rec.category || "", rec.side || "", rec.memo || "",
+        p.lat || "", p.lng || "", p.accuracy || "", p.speed || "", p.heading || "", p.gpsTime || "",
+        rec.points ? rec.points.length : "", rec.photo ? rec.photo.name : ""
+      ].map(csvEscape).join(",");
+    });
+    downloadText("\ufeff" + headers.map(csvEscape).join(",") + "\n" + rows.join("\n"), makeFileName("road_patrol", "csv"), "text/csv");
+  }
+
+  function toGeoJSON(){
+    const features = records.map(rec => {
+      let geometry = null;
+      if(rec.type === "segment"){
+        geometry = {
+          type: "LineString",
+          coordinates: rec.points.map(p => [Number(p.lng), Number(p.lat)])
+        };
+      }else{
+        const p = rec.point;
+        geometry = {
+          type: "Point",
+          coordinates: [Number(p.lng), Number(p.lat)]
+        };
+      }
+      return {
+        type: "Feature",
+        geometry,
+        properties: {
+          id: rec.id,
+          type: rec.type,
+          createdAt: rec.createdAt,
+          startedAt: rec.startedAt || "",
+          endedAt: rec.endedAt || "",
+          eval: rec.eval || "",
+          routeName: rec.routeName || "",
+          category: rec.category || "",
+          side: rec.side || "",
+          memo: rec.memo || "",
+          accuracy_m: rec.point ? rec.point.accuracy : "",
+          gpsTime: rec.point ? rec.point.gpsTime : "",
+          pointCount: rec.points ? rec.points.length : 1,
+          photoName: rec.photo ? rec.photo.name : ""
+        }
+      };
+    });
+    return { type:"FeatureCollection", features };
+  }
+
+  function exportGeoJSON(){
+    downloadText(JSON.stringify(toGeoJSON(), null, 2), makeFileName("road_patrol", "geojson"), "application/geo+json");
+  }
+
+  function backupJSON(){
+    const data = {
+      app:"road_patrol_html",
+      version:1,
+      exportedAt:nowIso(),
+      settings,
+      records
+    };
+    downloadText(JSON.stringify(data, null, 2), makeFileName("road_patrol_backup", "json"), "application/json");
+  }
+
+  function importJSON(file){
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      try{
+        const data = JSON.parse(e.target.result);
+        const imported = Array.isArray(data) ? data : data.records;
+        if(!Array.isArray(imported)) throw new Error("records not found");
+        if(!confirm(imported.length + "件を取り込みます。現在の記録に追加しますか？")) return;
+        records = records.concat(imported);
+        if(data.settings) settings = Object.assign(settings, data.settings);
+        saveRecords();
+        localStorage.setItem(LS_SETTINGS, JSON.stringify(settings));
+        applySettings();
+        refreshMap();
+        toast("取り込みました。", "good");
+      }catch(err){
+        toast("取込に失敗しました。バックアップJSONを選択してください。", "bad");
+      }
+    };
+    reader.readAsText(file, "utf-8");
+  }
+
+  function makeFileName(prefix, ext){
+    const d = new Date();
+    const pad = n => String(n).padStart(2,"0");
+    const stamp = d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+"_"+pad(d.getHours())+pad(d.getMinutes());
+    return prefix + "_" + stamp + "." + ext;
+  }
+
+  function downloadText(text, filename, type){
+    const blob = new Blob([text], {type:type + ";charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function initMap(){
+    if(map || typeof L === "undefined") return;
+    map = L.map("map").setView([35.624,139.55], 14);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap contributors"
+    }).addTo(map);
+    layerGroup = L.layerGroup().addTo(map);
+  }
+
+  function colorForEval(e){
+    if(e === "A") return "#16a34a";
+    if(e === "B") return "#f59e0b";
+    if(e === "C") return "#dc2626";
+    return "#6b7280";
+  }
+
+  function refreshMap(){
+    if(typeof L === "undefined"){
+      $("#map").innerHTML = "<div style='padding:16px'>地図ライブラリを読み込めませんでした。通信環境を確認してください。記録と出力は利用できます。</div>";
+      return;
+    }
+    initMap();
+    layerGroup.clearLayers();
+
+    const bounds = [];
+    records.forEach(rec => {
+      if(rec.type === "segment"){
+        const latlngs = rec.points.map(p => [p.lat, p.lng]);
+        if(latlngs.length > 1){
+          L.polyline(latlngs, {color:colorForEval(rec.eval), weight:6, opacity:.8}).addTo(layerGroup)
+            .bindPopup(popupHtml(rec));
+          latlngs.forEach(ll => bounds.push(ll));
+        }
+      }else{
+        const p = rec.point;
+        if(!p || p.lat == null || p.lng == null) return;
+        const radius = rec.type === "track" ? 4 : 8;
+        L.circleMarker([p.lat, p.lng], {
+          radius,
+          color:colorForEval(rec.eval),
+          fillColor:colorForEval(rec.eval),
+          fillOpacity: rec.type === "track" ? .35 : .85,
+          weight:1
+        }).addTo(layerGroup).bindPopup(popupHtml(rec));
+        bounds.push([p.lat,p.lng]);
+      }
+    });
+
+    if(currentPos){
+      const p = positionToPoint(currentPos);
+      L.marker([p.lat,p.lng]).addTo(layerGroup).bindPopup("現在地");
+      bounds.push([p.lat,p.lng]);
+    }
+
+    setTimeout(() => map.invalidateSize(), 100);
+    if(bounds.length){
+      map.fitBounds(bounds, {padding:[30,30], maxZoom:17});
+    }
+  }
+
+  function popupHtml(rec){
+    const p = rec.point || (rec.points && rec.points[0]) || {};
+    const img = rec.photo ? `<img src="${rec.photo.dataUrl}" style="max-width:220px;max-height:140px;border-radius:8px;margin-top:6px">` : "";
+    return `
+      <b>${escapeHtml(rec.eval || (rec.type === "track" ? "走行軌跡" : ""))} ${escapeHtml(rec.category || "")}</b><br>
+      ${escapeHtml(fmtDate(rec.createdAt))}<br>
+      ${escapeHtml(rec.side || "")}<br>
+      ${escapeHtml(rec.memo || "")}<br>
+      ${p.lat ? Number(p.lat).toFixed(7) + ", " + Number(p.lng).toFixed(7) : ""}
+      ${img}
+    `;
+  }
+
+  function jumpToRecord(rec){
+    if(!rec || !map) return;
+    let p = rec.point || (rec.points && rec.points[0]);
+    if(!p) return;
+    map.setView([p.lat, p.lng], 18);
+  }
+
+  function fitMap(){
+    refreshMap();
+  }
+
+  function openGoogleCurrent(){
+    const p = requireCurrentPos();
+    if(!p) return;
+    window.open("https://www.google.com/maps?q=" + encodeURIComponent(p.lat + "," + p.lng), "_blank");
+  }
+
+  function showTab(id){
+    $$(".tab").forEach(t => t.classList.remove("active"));
+    $$(".tabBtn").forEach(b => b.classList.toggle("active", b.dataset.tab === id));
+    $("#" + id).classList.add("active");
+    if(id === "maptab"){
+      setTimeout(refreshMap, 100);
+    }
+  }
+
+  function bind(){
+    $$(".tabBtn").forEach(btn => btn.addEventListener("click", () => showTab(btn.dataset.tab)));
+    $("#btnStartGPS").addEventListener("click", startGPS);
+    $("#btnStopGPS").addEventListener("click", stopGPS);
+    $$(".bigEval").forEach(btn => btn.addEventListener("click", () => addEvalRecord(btn.dataset.eval)));
+    $$(".segStart").forEach(btn => btn.addEventListener("click", () => startSegment(btn.dataset.eval)));
+    $("#btnSegEnd").addEventListener("click", endSegment);
+    $("#btnSegCancel").addEventListener("click", cancelSegment);
+    $("#btnTrack").addEventListener("click", () => {trackEnabled = true; lastTrackSavedAt = 0; toast("走行軌跡をONにしました。", "good");});
+    $("#btnTrackStop").addEventListener("click", () => {trackEnabled = false; toast("走行軌跡をOFFにしました。");});
+    $("#photoInput").addEventListener("change", e => handlePhoto(e.target.files[0]));
+    $("#btnClearInputs").addEventListener("click", clearInputs);
+    $("#btnExportCsv").addEventListener("click", exportCSV);
+    $("#btnExportGeo").addEventListener("click", exportGeoJSON);
+    $("#btnBackup").addEventListener("click", backupJSON);
+    $("#btnImport").addEventListener("click", () => $("#importFile").click());
+    $("#importFile").addEventListener("change", e => importJSON(e.target.files[0]));
+    $("#btnDeleteSelected").addEventListener("click", deleteSelected);
+    $("#btnDeleteAll").addEventListener("click", deleteAll);
+    $("#btnRefreshMap").addEventListener("click", refreshMap);
+    $("#btnFitMap").addEventListener("click", fitMap);
+    $("#btnOpenGoogle").addEventListener("click", openGoogleCurrent);
+    $("#btnSaveSettings").addEventListener("click", saveSettings);
+  }
+
+  bind();
+  applySettings();
+  renderList();
+  updateCount();
+
+  // 自動GPS開始はブラウザにブロックされることがあるため、明示ボタン方式。
+})();
+</script>
+</body>
+</html>
