@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>道路劣化パトロール 00_00</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<style>
+:root{
+  --bg:#f4f6f8;
+  --panel:#fff;
+  --text:#18202a;
+  --muted:#65717f;
+  --line:#dfe5ec;
+  --main:#155e75;
+  --main2:#0f766e;
+  --ok:#15803d;
+  --warn:#b45309;
+  --bad:#b91c1c;
+  --ink:#111827;
+  --soft:#eef6f6;
+  --shadow:0 8px 22px rgba(24,32,42,.08);
+}
+*{box-sizing:border-box}
+html{touch-action:manipulation}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans JP",sans-serif;
+  line-height:1.45;
+}
+button,input,select,textarea{font:inherit}
+button{
+  appearance:none;
+  border:0;
+  border-radius:8px;
+  min-height:48px;
+  padding:12px 14px;
+  background:#e8eef3;
+  color:var(--ink);
+  font-weight:800;
+  cursor:pointer;
+}
+button:active{transform:translateY(1px)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.primary{background:var(--main);color:#fff}
+button.green{background:var(--ok);color:#fff}
+button.yellow{background:var(--warn);color:#fff}
+button.red{background:var(--bad);color:#fff}
+button.dark{background:var(--ink);color:#fff}
+button.ghost{background:#fff;border:1px solid var(--line);color:#26313d}
+button.small{min-height:36px;padding:8px 10px;font-size:13px}
+header{
+  position:sticky;
+  top:0;
+  z-index:20;
+  background:#fff;
+  border-bottom:1px solid var(--line);
+  padding:calc(10px + env(safe-area-inset-top)) 12px 10px;
+}
+.head{
+  max-width:920px;
+  margin:0 auto;
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  align-items:center;
+}
+h1{font-size:17px;margin:0;font-weight:900;letter-spacing:0}
+.pill{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  padding:6px 10px;
+  font-size:12px;
+  font-weight:800;
+  white-space:nowrap;
+  background:#f8fafc;
+}
+.dot{width:9px;height:9px;border-radius:50%;background:#94a3b8}
+.dot.good{background:#16a34a}
+.dot.warn{background:#f59e0b}
+.dot.bad{background:#dc2626}
+main{max-width:920px;margin:0 auto;padding:10px 10px 96px}
+.panel{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:8px;
+  box-shadow:var(--shadow);
+  padding:12px;
+  margin:10px 0;
+}
+.statusGrid{
+  display:grid;
+  grid-template-columns:1.2fr 1fr;
+  gap:8px;
+}
+.statusBox{
+  background:#f8fafc;
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:10px;
+  min-height:60px;
+}
+.label{font-size:12px;color:var(--muted);font-weight:800}
+.value{font-size:17px;font-weight:900;margin-top:2px}
+.hint{font-size:12px;color:var(--muted)}
+.patrolActions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.evalGrid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+}
+.evalBtn{
+  min-height:92px;
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+  justify-content:center;
+  align-items:center;
+  font-size:26px;
+}
+.evalBtn span{
+  display:block;
+  font-size:13px;
+  line-height:1.2;
+  font-weight:900;
+}
+.evalBtn small{
+  display:block;
+  font-size:11px;
+  line-height:1.2;
+  font-weight:700;
+  opacity:.95;
+}
+.evalBtn.active{
+  outline:4px solid rgba(21,94,117,.22);
+  box-shadow:0 0 0 2px #fff inset;
+}
+.quickGrid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:8px;
+}
+.formGrid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+label{display:block;font-size:12px;font-weight:900;color:#334155;margin:0 0 4px}
+select,input,textarea{
+  width:100%;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:#fff;
+  color:var(--text);
+  padding:11px;
+  min-height:46px;
+}
+textarea{resize:vertical;min-height:70px}
+.tabs{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+}
+.tabBtn.active{background:var(--main);color:#fff}
+.tab{display:none}
+.tab.active{display:block}
+.recordLine{
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:10px;
+  margin:8px 0;
+  background:#fff;
+}
+.recordTop{
+  display:flex;
+  justify-content:space-between;
+  gap:8px;
+  align-items:flex-start;
+}
+.badge{
+  display:inline-flex;
+  justify-content:center;
+  align-items:center;
+  min-width:30px;
+  height:26px;
+  border-radius:999px;
+  color:#fff;
+  font-weight:900;
+  font-size:14px;
+}
+.badge.A{background:var(--ok)}
+.badge.B{background:var(--warn)}
+.badge.C{background:var(--bad)}
+.badge.S{background:var(--main)}
+.meta{font-size:12px;color:var(--muted);margin-top:4px}
+#map{
+  height:360px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:#e5e7eb;
+  overflow:hidden;
+}
+.footerBar{
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:0;
+  z-index:30;
+  background:rgba(255,255,255,.96);
+  border-top:1px solid var(--line);
+  padding:8px 10px calc(8px + env(safe-area-inset-bottom));
+}
+.footerInner{
+  max-width:920px;
+  margin:0 auto;
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:8px;
+}
+.hidden{display:none!important}
+.notice{
+  border:1px solid #cfe2e2;
+  background:var(--soft);
+  color:#164e63;
+  border-radius:8px;
+  padding:10px;
+  font-size:13px;
+}
+.notice.bad{border-color:#fecaca;background:#fef2f2;color:#991b1b}
+.notice.good{border-color:#bbf7d0;background:#f0fdf4;color:#166534}
+.arrowMarker{
+  width:22px;
+  height:22px;
+  position:relative;
+}
+.arrowMarker::before{
+  content:"";
+  position:absolute;
+  left:8px;
+  top:1px;
+  border-left:4px solid transparent;
+  border-right:4px solid transparent;
+  border-bottom:14px solid var(--arrow-color,#155e75);
+}
+.arrowMarker::after{
+  content:"";
+  position:absolute;
+  left:9px;
+  top:13px;
+  width:4px;
+  height:8px;
+  background:var(--arrow-color,#155e75);
+  border-radius:2px;
+}
+@media(max-width:640px){
+  main{padding-left:8px;padding-right:8px}
+  .head{align-items:flex-start}
+  .statusGrid,.formGrid{grid-template-columns:1fr}
+  .evalGrid{grid-template-columns:1fr}
+  .evalBtn{min-height:76px;align-items:flex-start;padding-left:18px}
+  .quickGrid{grid-template-columns:1fr 1fr}
+  .footerInner{grid-template-columns:repeat(2,1fr)}
+  #map{height:300px}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="head">
+    <div>
+      <h1>道路劣化パトロール</h1>
+      <div class="hint">00_00 / 区間評価を優先して記録</div>
+    </div>
+    <div class="pill"><span id="gpsDot" class="dot"></span><span id="gpsState">未捕捉</span></div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <div class="tabs" role="tablist">
+      <button class="tabBtn active" data-tab="record">記録</button>
+      <button class="tabBtn" data-tab="history">履歴</button>
+      <button class="tabBtn" data-tab="manage">出力</button>
+    </div>
+  </section>
+
+  <section id="record" class="tab active">
+    <div id="message" class="notice">道路パトロール開始を押すと、GPSと走行軌跡の記録を始めます。</div>
+
+    <div class="panel">
+      <div class="statusGrid">
+        <div class="statusBox">
+          <div class="label">現在の状態</div>
+          <div id="patrolState" class="value">待機中</div>
+          <div id="activeState" class="hint">開始後にA/B/Cを選んでください</div>
+        </div>
+        <div class="statusBox">
+          <div class="label">位置捕捉</div>
+          <div id="positionState" class="value">未捕捉</div>
+          <div id="directionState" class="hint">方向: -</div>
+        </div>
+      </div>
+      <div class="patrolActions" style="margin-top:8px">
+        <button id="btnStartPatrol" class="primary">道路パトロール開始</button>
+        <button id="btnEndPatrol" class="dark" disabled>道路パトロール終了</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="label">走行区間評価</div>
+      <div class="evalGrid" style="margin-top:8px">
+        <button class="evalBtn green" data-eval="A"><strong>A</strong><span>良好</span><small>問題なし</small></button>
+        <button class="evalBtn yellow" data-eval="B"><strong>B</strong><span>注意</span><small>補修候補</small></button>
+        <button class="evalBtn red" data-eval="C"><strong>C</strong><span>要対応</span><small>早期確認</small></button>
+      </div>
+      <div class="hint" style="margin-top:8px">評価を押すたびに、前の区間を保存して次の区間に切り替えます。</div>
+    </div>
+
+    <div class="panel">
+      <div class="label">スポット発見</div>
+      <div class="quickGrid" style="margin-top:8px">
+        <button class="spotBtn ghost" data-spot="水たまり">水たまり</button>
+        <button class="spotBtn ghost" data-spot="穴・段差">穴・段差</button>
+        <button class="spotBtn ghost" data-spot="側溝異常">側溝異常</button>
+        <button class="spotBtn ghost" data-spot="その他">その他</button>
+      </div>
+    </div>
+
+    <details class="panel">
+      <summary><strong>補足入力</strong></summary>
+      <div class="formGrid" style="margin-top:10px">
+        <div>
+          <label for="category">工種・種別</label>
+          <select id="category">
+            <option value="">未選択</option>
+            <option>側溝等補修</option>
+            <option>舗装道補修（振動含）</option>
+            <option>砂利道補修</option>
+            <option>側溝浚渫（桝含）</option>
+            <option>安全施設整備</option>
+            <option>舗装新設</option>
+            <option>側溝新設</option>
+            <option>道路改修</option>
+            <option>河川（水路）改修</option>
+            <option>橋梁架設</option>
+            <option>浚渫土処理</option>
+            <option>河川・水路浚渫</option>
+            <option>道路清掃</option>
+            <option>除草・樹木の剪定</option>
+            <option>土のう関係</option>
+            <option>その他</option>
+          </select>
+        </div>
+        <div>
+          <label for="laneSide">上下線</label>
+          <select id="laneSide">
+            <option value="">自動方向のみ</option>
+            <option>上り</option>
+            <option>下り</option>
+            <option>往路</option>
+            <option>復路</option>
+            <option>不明</option>
+          </select>
+        </div>
+        <div>
+          <label for="routeName">路線・巡回名</label>
+          <input id="routeName" placeholder="例：8月朝パトロール">
+        </div>
+        <div>
+          <label for="memo">メモ</label>
+          <textarea id="memo" placeholder="必要な時だけ入力"></textarea>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <section id="history" class="tab">
+    <div class="panel">
+      <div class="recordTop">
+        <div>
+          <strong>履歴</strong>
+          <div class="hint"><span id="recordCount">0</span>件 / 区間とスポットのみ保存</div>
+        </div>
+        <button id="btnRefreshMap" class="small ghost">地図更新</button>
+      </div>
+      <div id="recordList" style="margin-top:8px"></div>
+    </div>
+    <div class="panel">
+      <strong>地図プレビュー</strong>
+      <div class="hint">点は進行方向の矢印で表示します。GeoJSONには方向角を属性として出力します。</div>
+      <div id="map" style="margin-top:8px"></div>
+    </div>
+  </section>
+
+  <section id="manage" class="tab">
+    <div class="panel">
+      <strong>出力</strong>
+      <div class="quickGrid" style="margin-top:10px">
+        <button id="btnExportCsv" class="green">CSV出力</button>
+        <button id="btnExportGeo" class="primary">GeoJSON出力</button>
+        <button id="btnBackup" class="ghost">バックアップ</button>
+        <button id="btnImport" class="ghost">取込</button>
+      </div>
+      <input id="importFile" type="file" class="hidden" accept=".json,application/json">
+      <div class="notice" style="margin-top:10px">出力は区間・スポット単位です。GPSの細かい点列はGeoJSONのLineStringにまとめ、CSVでは代表点と点数だけにしています。</div>
+    </div>
+    <div class="panel">
+      <strong>履歴削除</strong>
+      <div class="quickGrid" style="margin-top:10px">
+        <button id="btnDeleteLast" class="ghost">直前1件を削除</button>
+        <button id="btnDeleteAll" class="red">バックアップ済み全削除</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="footerBar">
+  <div class="footerInner">
+    <button id="footStart" class="primary">開始</button>
+    <button id="footA" class="green">A 良好</button>
+    <button id="footB" class="yellow">B 注意</button>
+    <button id="footC" class="red">C 要対応</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const LS_KEY = "road_patrol_records_00_00";
+  const LS_SETTINGS = "road_patrol_settings_00_00";
+  const MIN_POINT_DISTANCE_M = 3;
+  const SAVE_INTERVAL_MS = 3000;
+
+  const evalLabels = {
+    A: "良好",
+    B: "注意",
+    C: "要対応"
+  };
+
+  let records = loadRecords();
+  let settings = loadSettings();
+  let watchId = null;
+  let currentPos = null;
+  let previousPoint = null;
+  let patrolActive = false;
+  let activeSegment = null;
+  let lastSavedAt = 0;
+  let lastDirectionDeg = null;
+  let map = null;
+  let layerGroup = null;
+
+  const $ = sel => document.querySelector(sel);
+  const $$ = sel => Array.from(document.querySelectorAll(sel));
+
+  function uid(){
+    return "rp_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,7);
+  }
+
+  function nowIso(){
+    return new Date().toISOString();
+  }
+
+  function fmtDate(iso){
+    return new Date(iso).toLocaleString("ja-JP", {hour12:false});
+  }
+
+  function loadRecords(){
+    try{
+      return JSON.parse(localStorage.getItem(LS_KEY) || "[]");
+    }catch(e){
+      return [];
+    }
+  }
+
+  function loadSettings(){
+    try{
+      return Object.assign({routeName:""}, JSON.parse(localStorage.getItem(LS_SETTINGS) || "{}"));
+    }catch(e){
+      return {routeName:""};
+    }
+  }
+
+  function saveRecords(){
+    localStorage.setItem(LS_KEY, JSON.stringify(records));
+    renderHistory();
+  }
+
+  function saveSettings(){
+    settings.routeName = $("#routeName").value.trim();
+    localStorage.setItem(LS_SETTINGS, JSON.stringify(settings));
+  }
+
+  function message(text, type){
+    const el = $("#message");
+    el.textContent = text;
+    el.className = "notice" + (type === "bad" ? " bad" : type === "good" ? " good" : "");
+  }
+
+  function startPatrol(){
+    patrolActive = true;
+    $("#btnStartPatrol").disabled = true;
+    $("#btnEndPatrol").disabled = false;
+    $("#footStart").textContent = "終了";
+    $("#patrolState").textContent = "パトロール中";
+    $("#activeState").textContent = "A/B/Cを選択してください";
+    saveSettings();
+    startGPS();
+    message("パトロールを開始しました。最初の評価を押してください。", "good");
+  }
+
+  function endPatrol(){
+    if(activeSegment) finishActiveSegment(true);
+    patrolActive = false;
+    activeSegment = null;
+    updateEvalButtons();
+    $("#btnStartPatrol").disabled = false;
+    $("#btnEndPatrol").disabled = true;
+    $("#footStart").textContent = "開始";
+    $("#patrolState").textContent = "終了";
+    $("#activeState").textContent = "記録を保存しました";
+    message("パトロールを終了しました。必要に応じてCSV/GeoJSONを出力してください。", "good");
+  }
+
+  function startGPS(){
+    if(watchId !== null) return;
+    if(!("geolocation" in navigator)){
+      setGpsState("GPS不可", "bad");
+      message("このブラウザでは位置情報が使えません。", "bad");
+      return;
+    }
+    setGpsState("捕捉中", "warn");
+    watchId = navigator.geolocation.watchPosition(onPosition, onGpsError, {
+      enableHighAccuracy:true,
+      maximumAge:1000,
+      timeout:15000
+    });
+  }
+
+  function onGpsError(err){
+    let text = "GPS取得失敗";
+    if(err.code === 1) text = "位置情報未許可";
+    if(err.code === 2) text = "現在地未取得";
+    if(err.code === 3) text = "GPSタイムアウト";
+    setGpsState(text, "bad");
+    $("#positionState").textContent = text;
+    message("位置情報を確認してください。HTTPS配信、屋外、端末の位置情報設定が安定します。", "bad");
+  }
+
+  function onPosition(pos){
+    currentPos = pos;
+    const point = positionToPoint(pos);
+    const gpsHeading = gpsHeadingDeg(pos);
+    const computed = gpsHeading || (previousPoint ? bearing(previousPoint, point) : null);
+    if(computed != null && Number.isFinite(computed)) lastDirectionDeg = computed;
+    point.direction_deg = lastDirectionDeg == null ? "" : Math.round(lastDirectionDeg);
+    previousPoint = point;
+
+    const accuracy = point.accuracy_m;
+    setGpsState(accuracy && accuracy <= 30 ? "捕捉OK" : "捕捉中", accuracy && accuracy <= 30 ? "good" : "warn");
+    $("#positionState").textContent = accuracy ? "精度 " + Math.round(accuracy) + "m" : "取得中";
+    $("#directionState").textContent = "方向: " + (point.direction_deg === "" ? "-" : point.direction_deg + "度");
+
+    if(activeSegment) maybeAppendSegmentPoint(point);
+  }
+
+  function setGpsState(text, tone){
+    $("#gpsState").textContent = text;
+    $("#gpsDot").className = "dot " + (tone || "");
+  }
+
+  function positionToPoint(pos){
+    const c = pos.coords;
+    return {
+      lat: Number(c.latitude),
+      lng: Number(c.longitude),
+      accuracy_m: c.accuracy == null ? "" : Math.round(Number(c.accuracy))
+    };
+  }
+
+  function gpsHeadingDeg(pos){
+    const heading = pos.coords.heading;
+    return heading == null || Number.isNaN(heading) ? null : Math.round(Number(heading));
+  }
+
+  function currentPoint(){
+    if(!currentPos){
+      message("まだ位置を捕捉できていません。少し待ってから操作してください。", "bad");
+      startGPS();
+      return null;
+    }
+    const p = positionToPoint(currentPos);
+    p.direction_deg = lastDirectionDeg == null ? "" : Math.round(lastDirectionDeg);
+    return p;
+  }
+
+  function switchEval(evalCode){
+    if(!patrolActive) startPatrol();
+    const point = currentPoint();
+    if(!point) return;
+    if(activeSegment && activeSegment.eval_code === evalCode){
+      message(evalCode + "評価を継続中です。", "good");
+      return;
+    }
+    if(activeSegment) finishActiveSegment(false);
+    activeSegment = {
+      id: uid(),
+      kind: "segment",
+      started_at: nowIso(),
+      ended_at: "",
+      eval_code: evalCode,
+      eval_label: evalLabels[evalCode],
+      category: $("#category").value,
+      lane_side: $("#laneSide").value,
+      route_name: $("#routeName").value.trim(),
+      memo: $("#memo").value.trim(),
+      points: [point]
+    };
+    lastSavedAt = Date.now();
+    updateEvalButtons();
+    $("#activeState").textContent = evalCode + " " + evalLabels[evalCode] + " を記録中";
+    message(evalCode + "区間の記録を開始しました。", "good");
+  }
+
+  function maybeAppendSegmentPoint(point){
+    const now = Date.now();
+    const last = activeSegment.points[activeSegment.points.length - 1];
+    if(now - lastSavedAt < SAVE_INTERVAL_MS && distanceMeters(last, point) < MIN_POINT_DISTANCE_M) return;
+    activeSegment.points.push(point);
+    lastSavedAt = now;
+    $("#activeState").textContent = activeSegment.eval_code + " " + activeSegment.eval_label + " / " + activeSegment.points.length + "点";
+  }
+
+  function finishActiveSegment(isFinal){
+    if(!activeSegment) return;
+    const point = currentPoint();
+    if(point) activeSegment.points.push(point);
+    activeSegment.ended_at = nowIso();
+    activeSegment.category = activeSegment.category || $("#category").value;
+    activeSegment.lane_side = activeSegment.lane_side || $("#laneSide").value;
+    activeSegment.route_name = activeSegment.route_name || $("#routeName").value.trim();
+    activeSegment.memo = activeSegment.memo || $("#memo").value.trim();
+    records.push(activeSegment);
+    saveRecords();
+    if(isFinal) activeSegment = null;
+  }
+
+  function addSpot(spotType){
+    if(!patrolActive) startPatrol();
+    const point = currentPoint();
+    if(!point) return;
+    records.push({
+      id: uid(),
+      kind: "spot",
+      created_at: nowIso(),
+      spot_type: spotType,
+      category: $("#category").value,
+      lane_side: $("#laneSide").value,
+      route_name: $("#routeName").value.trim(),
+      memo: $("#memo").value.trim(),
+      point
+    });
+    saveRecords();
+    message(spotType + "をスポット記録しました。", "good");
+  }
+
+  function renderHistory(){
+    $("#recordCount").textContent = records.length;
+    const box = $("#recordList");
+    if(records.length === 0){
+      box.innerHTML = "<div class='hint'>まだ記録がありません。</div>";
+      return;
+    }
+    box.innerHTML = "";
+    records.slice().reverse().forEach(rec => {
+      const div = document.createElement("div");
+      div.className = "recordLine";
+      const isSegment = rec.kind === "segment";
+      const p = isSegment ? rec.points[0] : rec.point;
+      const title = isSegment
+        ? rec.eval_code + " " + rec.eval_label + " 区間"
+        : rec.spot_type + " スポット";
+      div.innerHTML = `
+        <div class="recordTop">
+          <div>
+            <span class="badge ${isSegment ? rec.eval_code : "S"}">${isSegment ? rec.eval_code : "!"}</span>
+            <strong>${escapeHtml(title)}</strong>
+            <div class="meta">${escapeHtml(fmtDate(isSegment ? rec.started_at : rec.created_at))} / ${escapeHtml(rec.category || "種別なし")} / ${escapeHtml(rec.lane_side || "方向自動")}</div>
+            <div class="meta">点数 ${isSegment ? rec.points.length : 1} / 方位 ${p && p.direction_deg !== "" ? p.direction_deg + "度" : "-"}</div>
+          </div>
+          <button class="small ghost deleteOne" data-id="${rec.id}">削除</button>
+        </div>
+      `;
+      box.appendChild(div);
+    });
+    $$(".deleteOne").forEach(btn => btn.addEventListener("click", () => deleteOne(btn.dataset.id)));
+  }
+
+  function deleteOne(id){
+    if(!confirm("この記録を削除しますか？")) return;
+    records = records.filter(r => r.id !== id);
+    saveRecords();
+    refreshMap();
+  }
+
+  function deleteLast(){
+    if(records.length === 0){
+      message("削除する記録がありません。", "bad");
+      return;
+    }
+    if(!confirm("直前の1件を削除しますか？")) return;
+    records.pop();
+    saveRecords();
+    refreshMap();
+  }
+
+  function deleteAll(){
+    if(!confirm("バックアップ済みの前提で、全履歴を削除しますか？この操作は元に戻せません。")) return;
+    records = [];
+    saveRecords();
+    refreshMap();
+    message("全履歴を削除しました。", "good");
+  }
+
+  function exportCSV(){
+    const headers = [
+      "id","kind","start_time","end_time","eval","spot","category","lane_side","route_name",
+      "lat","lng","direction_deg","point_count","memo"
+    ];
+    const rows = records.map(rec => {
+      const isSegment = rec.kind === "segment";
+      const p = isSegment ? representativePoint(rec.points) : rec.point;
+      return [
+        rec.id,
+        rec.kind,
+        isSegment ? rec.started_at : rec.created_at,
+        isSegment ? rec.ended_at : "",
+        isSegment ? rec.eval_code : "",
+        isSegment ? "" : rec.spot_type,
+        rec.category || "",
+        rec.lane_side || "",
+        rec.route_name || "",
+        p ? p.lat : "",
+        p ? p.lng : "",
+        p ? p.direction_deg : "",
+        isSegment ? rec.points.length : 1,
+        rec.memo || ""
+      ].map(csvEscape).join(",");
+    });
+    downloadText("\ufeff" + headers.map(csvEscape).join(",") + "\n" + rows.join("\n"), fileName("road_patrol_00_00", "csv"), "text/csv");
+  }
+
+  function toGeoJSON(){
+    return {
+      type:"FeatureCollection",
+      features:records.map(rec => {
+        const isSegment = rec.kind === "segment";
+        const p = isSegment ? representativePoint(rec.points) : rec.point;
+        return {
+          type:"Feature",
+          geometry:isSegment ? {
+            type:"LineString",
+            coordinates:rec.points.map(pt => [pt.lng, pt.lat])
+          } : {
+            type:"Point",
+            coordinates:[rec.point.lng, rec.point.lat]
+          },
+          properties:{
+            id:rec.id,
+            kind:rec.kind,
+            start_time:isSegment ? rec.started_at : rec.created_at,
+            end_time:isSegment ? rec.ended_at : "",
+            eval:isSegment ? rec.eval_code : "",
+            spot:isSegment ? "" : rec.spot_type,
+            category:rec.category || "",
+            lane_side:rec.lane_side || "",
+            route_name:rec.route_name || "",
+            direction_deg:p ? p.direction_deg : "",
+            point_count:isSegment ? rec.points.length : 1
+          }
+        };
+      })
+    };
+  }
+
+  function exportGeoJSON(){
+    downloadText(JSON.stringify(toGeoJSON(), null, 2), fileName("road_patrol_00_00", "geojson"), "application/geo+json");
+  }
+
+  function backupJSON(){
+    downloadText(JSON.stringify({app:"road_patrol", version:"00_00", exported_at:nowIso(), records}, null, 2), fileName("road_patrol_00_00_backup", "json"), "application/json");
+  }
+
+  function importJSON(file){
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      try{
+        const data = JSON.parse(e.target.result);
+        const imported = Array.isArray(data) ? data : data.records;
+        if(!Array.isArray(imported)) throw new Error("records not found");
+        if(!confirm(imported.length + "件を追加で取り込みますか？")) return;
+        records = records.concat(imported);
+        saveRecords();
+        message("バックアップを取り込みました。", "good");
+      }catch(err){
+        message("バックアップJSONを読み込めませんでした。", "bad");
+      }
+    };
+    reader.readAsText(file, "utf-8");
+  }
+
+  function initMap(){
+    if(map || typeof L === "undefined") return;
+    map = L.map("map").setView([35.68,139.76], 13);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom:19,
+      attribution:"&copy; OpenStreetMap contributors"
+    }).addTo(map);
+    layerGroup = L.layerGroup().addTo(map);
+  }
+
+  function refreshMap(){
+    if(typeof L === "undefined"){
+      $("#map").innerHTML = "<div style='padding:12px'>地図を読み込めませんでした。CSV/GeoJSON出力は利用できます。</div>";
+      return;
+    }
+    initMap();
+    layerGroup.clearLayers();
+    const bounds = [];
+    records.forEach(rec => {
+      if(rec.kind === "segment"){
+        const latlngs = rec.points.map(p => [p.lat, p.lng]);
+        if(latlngs.length > 1){
+          L.polyline(latlngs, {color:colorFor(rec.eval_code), weight:6, opacity:.82}).addTo(layerGroup);
+          addArrow(rec.points[Math.floor(rec.points.length / 2)], rec.eval_code, popupText(rec));
+          latlngs.forEach(ll => bounds.push(ll));
+        }
+      }else if(rec.point){
+        addArrow(rec.point, "S", popupText(rec));
+        bounds.push([rec.point.lat, rec.point.lng]);
+      }
+    });
+    if(currentPos){
+      const p = currentPoint();
+      if(p){
+        addArrow(p, "S", "現在地");
+        bounds.push([p.lat,p.lng]);
+      }
+    }
+    setTimeout(() => map.invalidateSize(), 100);
+    if(bounds.length) map.fitBounds(bounds, {padding:[28,28], maxZoom:17});
+  }
+
+  function addArrow(point, evalCode, popup){
+    if(!point) return;
+    const color = colorFor(evalCode);
+    const deg = Number(point.direction_deg || 0);
+    const html = "<div class='arrowMarker' style='--arrow-color:" + color + ";transform:rotate(" + deg + "deg)'></div>";
+    L.marker([point.lat, point.lng], {
+      icon:L.divIcon({className:"", html, iconSize:[22,22], iconAnchor:[11,11]})
+    }).addTo(layerGroup).bindPopup(popup);
+  }
+
+  function popupText(rec){
+    if(typeof rec === "string") return rec;
+    if(rec.kind === "segment") return rec.eval_code + " " + rec.eval_label + "<br>" + escapeHtml(rec.category || "") + "<br>" + escapeHtml(fmtDate(rec.started_at));
+    return escapeHtml(rec.spot_type) + "<br>" + escapeHtml(rec.category || "") + "<br>" + escapeHtml(fmtDate(rec.created_at));
+  }
+
+  function updateEvalButtons(){
+    $$(".evalBtn").forEach(btn => btn.classList.toggle("active", activeSegment && activeSegment.eval_code === btn.dataset.eval));
+  }
+
+  function showTab(id){
+    $$(".tab").forEach(tab => tab.classList.remove("active"));
+    $$(".tabBtn").forEach(btn => btn.classList.toggle("active", btn.dataset.tab === id));
+    $("#" + id).classList.add("active");
+    if(id === "history") setTimeout(refreshMap, 100);
+  }
+
+  function representativePoint(points){
+    if(!points || points.length === 0) return null;
+    return points[Math.floor(points.length / 2)];
+  }
+
+  function bearing(a, b){
+    const lat1 = toRad(a.lat);
+    const lat2 = toRad(b.lat);
+    const dLng = toRad(b.lng - a.lng);
+    const y = Math.sin(dLng) * Math.cos(lat2);
+    const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+    return normalizeDeg(toDeg(Math.atan2(y, x)));
+  }
+
+  function distanceMeters(a, b){
+    const r = 6371000;
+    const dLat = toRad(b.lat - a.lat);
+    const dLng = toRad(b.lng - a.lng);
+    const lat1 = toRad(a.lat);
+    const lat2 = toRad(b.lat);
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+    return 2 * r * Math.asin(Math.sqrt(h));
+  }
+
+  function normalizeDeg(deg){
+    return ((deg % 360) + 360) % 360;
+  }
+
+  function toRad(deg){ return deg * Math.PI / 180; }
+  function toDeg(rad){ return rad * 180 / Math.PI; }
+
+  function colorFor(evalCode){
+    if(evalCode === "A") return "#15803d";
+    if(evalCode === "B") return "#b45309";
+    if(evalCode === "C") return "#b91c1c";
+    return "#155e75";
+  }
+
+  function csvEscape(value){
+    const s = value == null ? "" : String(value);
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+
+  function escapeHtml(s){
+    return String(s == null ? "" : s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));
+  }
+
+  function fileName(prefix, ext){
+    const d = new Date();
+    const pad = n => String(n).padStart(2, "0");
+    return prefix + "_" + d.getFullYear() + pad(d.getMonth()+1) + pad(d.getDate()) + "_" + pad(d.getHours()) + pad(d.getMinutes()) + "." + ext;
+  }
+
+  function downloadText(text, filename, type){
+    const blob = new Blob([text], {type:type + ";charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function bind(){
+    $$(".tabBtn").forEach(btn => btn.addEventListener("click", () => showTab(btn.dataset.tab)));
+    $("#btnStartPatrol").addEventListener("click", startPatrol);
+    $("#btnEndPatrol").addEventListener("click", endPatrol);
+    $("#footStart").addEventListener("click", () => patrolActive ? endPatrol() : startPatrol());
+    $$(".evalBtn").forEach(btn => btn.addEventListener("click", () => switchEval(btn.dataset.eval)));
+    $("#footA").addEventListener("click", () => switchEval("A"));
+    $("#footB").addEventListener("click", () => switchEval("B"));
+    $("#footC").addEventListener("click", () => switchEval("C"));
+    $$(".spotBtn").forEach(btn => btn.addEventListener("click", () => addSpot(btn.dataset.spot)));
+    $("#btnRefreshMap").addEventListener("click", refreshMap);
+    $("#btnExportCsv").addEventListener("click", exportCSV);
+    $("#btnExportGeo").addEventListener("click", exportGeoJSON);
+    $("#btnBackup").addEventListener("click", backupJSON);
+    $("#btnImport").addEventListener("click", () => $("#importFile").click());
+    $("#importFile").addEventListener("change", e => importJSON(e.target.files[0]));
+    $("#btnDeleteLast").addEventListener("click", deleteLast);
+    $("#btnDeleteAll").addEventListener("click", deleteAll);
+    $("#routeName").value = settings.routeName || "";
+    $("#routeName").addEventListener("change", saveSettings);
+  }
+
+  bind();
+  renderHistory();
+})();
+</script>
+</body>
+</html>
