@@ -1,0 +1,2128 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>道路劣化パトロール 00_02</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<style>
+:root{
+  --bg:#f4f6f8;
+  --panel:#fff;
+  --text:#18202a;
+  --muted:#65717f;
+  --line:#dfe5ec;
+  --main:#155e75;
+  --main2:#0f766e;
+  --ok:#15803d;
+  --warn:#b45309;
+  --bad:#b91c1c;
+  --ink:#111827;
+  --soft:#eef6f6;
+  --shadow:0 8px 22px rgba(24,32,42,.08);
+}
+*{box-sizing:border-box}
+html{touch-action:manipulation}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans JP",sans-serif;
+  line-height:1.45;
+}
+button,input,select,textarea{font:inherit}
+button{
+  appearance:none;
+  border:0;
+  border-radius:8px;
+  min-height:48px;
+  padding:12px 14px;
+  background:#e8eef3;
+  color:var(--ink);
+  font-weight:800;
+  cursor:pointer;
+}
+button:active{transform:translateY(1px)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.primary{background:var(--main);color:#fff}
+button.green{background:var(--ok);color:#fff}
+button.yellow{background:var(--warn);color:#fff}
+button.red{background:var(--bad);color:#fff}
+button.dark{background:var(--ink);color:#fff}
+button.ghost{background:#fff;border:1px solid var(--line);color:#26313d}
+button.small{min-height:36px;padding:8px 10px;font-size:13px}
+header{
+  position:sticky;
+  top:0;
+  z-index:20;
+  background:#fff;
+  border-bottom:1px solid var(--line);
+  padding:calc(10px + env(safe-area-inset-top)) 12px 10px;
+}
+.head{
+  max-width:920px;
+  margin:0 auto;
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  align-items:center;
+}
+h1{font-size:17px;margin:0;font-weight:900;letter-spacing:0}
+.pill{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  padding:6px 10px;
+  font-size:12px;
+  font-weight:800;
+  white-space:nowrap;
+  background:#f8fafc;
+}
+.dot{width:9px;height:9px;border-radius:50%;background:#94a3b8}
+.dot.good{background:#16a34a}
+.dot.warn{background:#f59e0b}
+.dot.bad{background:#dc2626}
+main{max-width:920px;margin:0 auto;padding:10px 10px 96px}
+.panel{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:8px;
+  box-shadow:var(--shadow);
+  padding:12px;
+  margin:10px 0;
+}
+.statusGrid{
+  display:grid;
+  grid-template-columns:1.2fr 1fr;
+  gap:8px;
+}
+.statusBox{
+  background:#f8fafc;
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:10px;
+  min-height:60px;
+}
+.label{font-size:12px;color:var(--muted);font-weight:800}
+.value{font-size:17px;font-weight:900;margin-top:2px}
+.hint{font-size:12px;color:var(--muted)}
+.patrolActions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.evalGrid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+}
+.evalRail{
+  overflow-x:auto;
+  padding:0 20px 4px;
+  margin:8px -12px 0;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+}
+.evalRail::-webkit-scrollbar{display:none}
+.evalBtn{
+  min-height:92px;
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+  justify-content:center;
+  align-items:center;
+  font-size:26px;
+}
+.evalBtn span{
+  display:block;
+  font-size:13px;
+  line-height:1.2;
+  font-weight:900;
+}
+.evalBtn small{
+  display:block;
+  font-size:11px;
+  line-height:1.2;
+  font-weight:700;
+  opacity:.95;
+}
+.evalBtn.active{
+  outline:4px solid rgba(21,94,117,.22);
+  box-shadow:0 0 0 2px #fff inset;
+}
+.quickGrid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:8px;
+}
+.outputGrid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:8px;
+}
+.filterGrid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.formGrid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.checkGrid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:8px;
+}
+.checkGrid label{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  min-height:38px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:7px 9px;
+  background:#fff;
+  margin:0;
+  font-size:13px;
+}
+.checkGrid input{width:auto;min-height:0}
+.editPanel{
+  border:1px solid #cfe2e2;
+  border-radius:8px;
+  background:#f8fcfc;
+  padding:10px;
+  margin-top:10px;
+}
+label{display:block;font-size:12px;font-weight:900;color:#334155;margin:0 0 4px}
+select,input,textarea{
+  width:100%;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:#fff;
+  color:var(--text);
+  padding:11px;
+  min-height:46px;
+}
+textarea{resize:vertical;min-height:70px}
+.tabs{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+}
+.tabBtn.active{background:var(--main);color:#fff}
+.tab{display:none}
+.tab.active{display:block}
+.recordLine{
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:10px;
+  margin:8px 0;
+  background:#fff;
+}
+.recordTop{
+  display:flex;
+  justify-content:space-between;
+  gap:8px;
+  align-items:flex-start;
+}
+.badge{
+  display:inline-flex;
+  justify-content:center;
+  align-items:center;
+  min-width:30px;
+  height:26px;
+  border-radius:999px;
+  color:#fff;
+  font-weight:900;
+  font-size:14px;
+}
+.badge.A{background:var(--ok)}
+.badge.B{background:var(--warn)}
+.badge.C{background:var(--bad)}
+.badge.S{background:var(--main)}
+.meta{font-size:12px;color:var(--muted);margin-top:4px}
+.summaryGrid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:8px;
+  margin-top:8px;
+}
+.summaryItem{
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:8px;
+  background:#f8fafc;
+}
+.summaryItem strong{display:block;font-size:18px}
+.criteria{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+  margin-top:8px;
+}
+.criteria div{
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:#f8fafc;
+  padding:8px;
+  font-size:12px;
+}
+#map{
+  height:360px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:#e5e7eb;
+  overflow:hidden;
+}
+.footerBar{
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:0;
+  z-index:30;
+  background:rgba(255,255,255,.96);
+  border-top:1px solid var(--line);
+  padding:8px 10px calc(8px + env(safe-area-inset-bottom));
+}
+.footerInner{
+  max-width:920px;
+  margin:0 auto;
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:8px;
+}
+.hidden{display:none!important}
+.notice{
+  border:1px solid #cfe2e2;
+  background:var(--soft);
+  color:#164e63;
+  border-radius:8px;
+  padding:10px;
+  font-size:13px;
+}
+.notice.bad{border-color:#fecaca;background:#fef2f2;color:#991b1b}
+.notice.good{border-color:#bbf7d0;background:#f0fdf4;color:#166534}
+.arrowMarker{
+  width:22px;
+  height:22px;
+  position:relative;
+}
+.arrowMarker::before{
+  content:"";
+  position:absolute;
+  left:8px;
+  top:1px;
+  border-left:4px solid transparent;
+  border-right:4px solid transparent;
+  border-bottom:14px solid var(--arrow-color,#155e75);
+}
+.arrowMarker::after{
+  content:"";
+  position:absolute;
+  left:9px;
+  top:13px;
+  width:4px;
+  height:8px;
+  background:var(--arrow-color,#155e75);
+  border-radius:2px;
+}
+@media(max-width:640px){
+  main{padding-left:8px;padding-right:8px}
+  .head{align-items:flex-start}
+  .statusGrid,.formGrid,.filterGrid,.checkGrid{grid-template-columns:1fr}
+  .evalGrid{
+    width:max-content;
+    grid-template-columns:repeat(3, minmax(104px, 112px));
+  }
+  .evalBtn{min-height:76px}
+  .quickGrid{grid-template-columns:1fr 1fr}
+  .outputGrid{grid-template-columns:1fr}
+  .summaryGrid{grid-template-columns:repeat(2,1fr)}
+  .criteria{grid-template-columns:1fr}
+  .footerBar{padding-left:0;padding-right:0}
+  .footerInner{
+    overflow-x:auto;
+    padding:0 22px;
+    grid-template-columns:repeat(4, minmax(86px, 1fr));
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  .footerInner::-webkit-scrollbar{display:none}
+  #map{height:300px}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="head">
+    <div>
+      <h1>道路劣化パトロール</h1>
+      <div class="hint">00_02 / 区間評価を優先して記録</div>
+    </div>
+    <div class="pill"><span id="gpsDot" class="dot"></span><span id="gpsState">未捕捉</span></div>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <div class="tabs" role="tablist">
+      <button class="tabBtn active" data-tab="record">記録</button>
+      <button class="tabBtn" data-tab="history">確認</button>
+      <button class="tabBtn" data-tab="manage">出力</button>
+    </div>
+  </section>
+
+  <section id="record" class="tab active">
+    <div id="message" class="notice">道路パトロール開始を押すと、GPSと走行軌跡の記録を始めます。</div>
+
+    <div class="panel">
+      <div class="statusGrid">
+        <div class="statusBox">
+          <div class="label">現在の状態</div>
+          <div id="patrolState" class="value">待機中</div>
+          <div id="activeState" class="hint">開始後にA/B/Cを選んでください</div>
+        </div>
+        <div class="statusBox">
+          <div class="label">位置捕捉</div>
+          <div id="positionState" class="value">未捕捉</div>
+          <div id="directionState" class="hint">方向: -</div>
+        </div>
+      </div>
+      <div class="formGrid" style="margin-top:8px">
+        <div>
+          <label for="observerId">評価者ID（任意）</label>
+          <input id="observerId" autocomplete="off" placeholder="例：職員番号、班名など">
+        </div>
+        <div>
+          <label>巡回ID</label>
+          <div id="patrolIdView" class="value">開始時に作成</div>
+        </div>
+      </div>
+      <div class="patrolActions" style="margin-top:8px">
+        <button id="btnStartPatrol" class="primary">道路パトロール開始</button>
+        <button id="btnEndPatrol" class="dark" disabled>道路パトロール終了</button>
+      </div>
+      <div id="draftActions" class="quickGrid hidden" style="margin-top:8px">
+        <button id="btnResumeDraft" class="primary">中断巡回を再開</button>
+        <button id="btnCloseDraft" class="ghost">中断分を保存して終了</button>
+      </div>
+      <div id="saveState" class="hint" style="margin-top:8px">保存状態: 待機中</div>
+    </div>
+
+    <div class="panel">
+      <div class="label">走行区間評価</div>
+      <div class="evalRail">
+        <div class="evalGrid">
+          <button class="evalBtn green" data-eval="A"><strong>A</strong><span>良好</span><small>問題なし</small></button>
+          <button class="evalBtn yellow" data-eval="B"><strong>B</strong><span>注意</span><small>補修候補</small></button>
+          <button class="evalBtn red" data-eval="C"><strong>C</strong><span>要対応</span><small>早期確認</small></button>
+        </div>
+      </div>
+      <div class="hint" style="margin-top:8px">評価を押すたびに、前の区間を保存して次の区間に切り替えます。</div>
+      <button id="btnSplitSame" class="ghost" style="width:100%;margin-top:8px">同じ評価で区切る</button>
+      <div class="criteria">
+        <div><strong>A 良好</strong><br>通常巡回で問題なし。</div>
+        <div><strong>B 注意</strong><br>補修候補。次回確認や写真記録を検討。</div>
+        <div><strong>C 要対応</strong><br>早期確認候補。即時工事決定ではありません。</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="label">スポット発見</div>
+      <div class="quickGrid" style="margin-top:8px">
+        <button class="spotBtn ghost" data-spot="水たまり">水たまり</button>
+        <button class="spotBtn ghost" data-spot="穴・段差">穴・段差</button>
+        <button class="spotBtn ghost" data-spot="側溝異常">側溝異常</button>
+        <button class="spotBtn ghost" data-spot="その他">その他</button>
+      </div>
+    </div>
+
+    <details class="panel">
+      <summary><strong>補足入力</strong></summary>
+      <div class="formGrid" style="margin-top:10px">
+        <div>
+          <label for="category">工種・種別</label>
+          <select id="category">
+            <option value="">未選択</option>
+            <option>側溝等補修</option>
+            <option>舗装道補修（振動含）</option>
+            <option>砂利道補修</option>
+            <option>側溝浚渫（桝含）</option>
+            <option>安全施設整備</option>
+            <option>舗装新設</option>
+            <option>側溝新設</option>
+            <option>道路改修</option>
+            <option>河川（水路）改修</option>
+            <option>橋梁架設</option>
+            <option>浚渫土処理</option>
+            <option>河川・水路浚渫</option>
+            <option>道路清掃</option>
+            <option>除草・樹木の剪定</option>
+            <option>土のう関係</option>
+            <option>その他</option>
+          </select>
+        </div>
+        <div>
+          <label for="laneSide">上下線</label>
+          <select id="laneSide">
+            <option value="">自動方向のみ</option>
+            <option>上り</option>
+            <option>下り</option>
+            <option>往路</option>
+            <option>復路</option>
+            <option>不明</option>
+          </select>
+        </div>
+        <div>
+          <label for="routeName">巡回名</label>
+          <input id="routeName" placeholder="例：8月朝パトロール">
+        </div>
+        <div>
+          <label for="roadSectionId">共通道路区間ID（任意）</label>
+          <input id="roadSectionId" placeholder="道路台帳等のIDがあれば入力">
+        </div>
+        <div>
+          <label for="memo">メモ</label>
+          <textarea id="memo" placeholder="必要な時だけ入力"></textarea>
+        </div>
+        <div>
+          <label for="safetyConcern">安全上の懸念</label>
+          <select id="safetyConcern">
+            <option>未評価</option>
+            <option>なし</option>
+            <option>あり</option>
+          </select>
+        </div>
+        <div>
+          <label for="trafficLevel">交通量の主観評価</label>
+          <select id="trafficLevel">
+            <option>未評価</option>
+            <option>少</option>
+            <option>中</option>
+            <option>多</option>
+          </select>
+        </div>
+        <div>
+          <label for="preventiveCandidate">予防的対応候補</label>
+          <select id="preventiveCandidate">
+            <option>未評価</option>
+            <option>いいえ</option>
+            <option>はい</option>
+          </select>
+        </div>
+        <div>
+          <label for="safetyNote">安全メモ</label>
+          <textarea id="safetyNote" placeholder="任意"></textarea>
+        </div>
+        <div>
+          <label for="roadImportanceNote">道路重要度メモ</label>
+          <textarea id="roadImportanceNote" placeholder="任意"></textarea>
+        </div>
+        <div>
+          <label for="preventiveNote">予防保全メモ</label>
+          <textarea id="preventiveNote" placeholder="任意"></textarea>
+        </div>
+        <div>
+          <label for="pointIntervalSec">採用間隔・秒</label>
+          <input id="pointIntervalSec" type="number" min="1" max="60" value="3">
+        </div>
+        <div>
+          <label for="pointDistanceM">採用距離・m</label>
+          <input id="pointDistanceM" type="number" min="1" max="50" value="3">
+        </div>
+        <div>
+          <label for="stalePositionSec">古い位置判定・秒</label>
+          <input id="stalePositionSec" type="number" min="3" max="120" value="10">
+        </div>
+        <div>
+          <label for="lowAccuracyM">低精度判定・m</label>
+          <input id="lowAccuracyM" type="number" min="5" max="200" value="30">
+        </div>
+      </div>
+      <div style="margin-top:10px">
+        <label>損傷種別（複数選択・任意）</label>
+        <div class="checkGrid">
+          <label><input type="checkbox" name="damageType" value="ひび割れ">ひび割れ</label>
+          <label><input type="checkbox" name="damageType" value="わだち掘れ">わだち掘れ</label>
+          <label><input type="checkbox" name="damageType" value="ポットホール">ポットホール</label>
+          <label><input type="checkbox" name="damageType" value="段差">段差</label>
+          <label><input type="checkbox" name="damageType" value="排水不良">排水不良</label>
+          <label><input type="checkbox" name="damageType" value="その他">その他</label>
+        </div>
+      </div>
+      <div class="hint" style="margin-top:8px">補足入力は区間開始時にスナップショットとして保存します。途中変更は次の区間から有効です。</div>
+    </details>
+  </section>
+
+  <section id="history" class="tab">
+    <div class="panel">
+      <div class="recordTop">
+        <div>
+          <strong>地図プレビュー</strong>
+          <div class="hint">初期表示は直近7日。A/B/Cと進行方向を矢印で確認できます。</div>
+        </div>
+        <button id="btnRefreshMap" class="small ghost">地図更新</button>
+      </div>
+      <div id="map" style="margin-top:8px"></div>
+    </div>
+    <div class="panel">
+      <strong>抽出条件</strong>
+      <div class="filterGrid" style="margin-top:10px">
+        <div>
+          <label for="filterFrom">開始日</label>
+          <input id="filterFrom" type="date">
+        </div>
+        <div>
+          <label for="filterTo">終了日</label>
+          <input id="filterTo" type="date">
+        </div>
+        <div>
+          <label for="filterPatrolId">巡回ID</label>
+          <input id="filterPatrolId" placeholder="空欄で全件">
+        </div>
+        <div>
+          <label for="filterObserverId">評価者ID</label>
+          <input id="filterObserverId" placeholder="空欄で全件">
+        </div>
+        <div>
+          <label for="filterEval">評価</label>
+          <select id="filterEval">
+            <option value="">全評価</option>
+            <option>A</option>
+            <option>B</option>
+            <option>C</option>
+            <option value="spot">スポット</option>
+          </select>
+        </div>
+        <div>
+          <label for="filterSpot">スポット</label>
+          <select id="filterSpot">
+            <option value="">全スポット</option>
+            <option>水たまり</option>
+            <option>穴・段差</option>
+            <option>側溝異常</option>
+            <option>その他</option>
+          </select>
+        </div>
+      </div>
+      <div class="quickGrid" style="margin-top:8px">
+        <button class="quickFilter ghost" data-range="today">今日</button>
+        <button class="quickFilter ghost" data-range="7days">直近7日</button>
+        <button class="quickFilter ghost" data-range="month">今月</button>
+        <button class="quickFilter ghost" data-range="all">全件</button>
+      </div>
+      <div class="summaryGrid">
+        <div class="summaryItem"><div class="label">観測区間</div><strong id="summarySegments">0</strong></div>
+        <div class="summaryItem"><div class="label">スポット</div><strong id="summarySpots">0</strong></div>
+        <div class="summaryItem"><div class="label">A延長m</div><strong id="summaryLenA">0</strong></div>
+        <div class="summaryItem"><div class="label">B延長m</div><strong id="summaryLenB">0</strong></div>
+        <div class="summaryItem"><div class="label">C延長m</div><strong id="summaryLenC">0</strong></div>
+        <div class="summaryItem"><div class="label">未完了</div><strong id="summaryDraft">0</strong></div>
+      </div>
+      <div class="hint" style="margin-top:8px">延長はGPS観測延長で、再走行の重複を含みます。道路総延長や評価済み道路割合ではありません。</div>
+    </div>
+    <div class="panel">
+      <strong>軌跡・スポット</strong>
+      <div class="hint"><span id="recordCount">0</span>件表示 / 全<span id="allRecordCount">0</span>件</div>
+      <div id="recordList" style="margin-top:8px"></div>
+      <div id="editPanel" class="editPanel hidden">
+        <strong>記録を修正</strong>
+        <div class="hint">GPS座標は今回編集対象外です。出力は最新修正値を使用し、バックアップには修正履歴を含みます。</div>
+        <input id="editRecordId" type="hidden">
+        <div class="formGrid" style="margin-top:8px">
+          <div>
+            <label for="editEval">評価</label>
+            <select id="editEval">
+              <option value="">スポットまたは未設定</option>
+              <option>A</option>
+              <option>B</option>
+              <option>C</option>
+            </select>
+          </div>
+          <div>
+            <label for="editCategory">工種・種別</label>
+            <input id="editCategory">
+          </div>
+          <div>
+            <label for="editRoadSectionId">共通道路区間ID</label>
+            <input id="editRoadSectionId">
+          </div>
+          <div>
+            <label for="editDamageTypes">損傷種別（カンマ区切り）</label>
+            <input id="editDamageTypes">
+          </div>
+          <div>
+            <label for="editSafetyConcern">安全上の懸念</label>
+            <select id="editSafetyConcern">
+              <option>未評価</option>
+              <option>なし</option>
+              <option>あり</option>
+            </select>
+          </div>
+          <div>
+            <label for="editTrafficLevel">交通量の主観評価</label>
+            <select id="editTrafficLevel">
+              <option>未評価</option>
+              <option>少</option>
+              <option>中</option>
+              <option>多</option>
+            </select>
+          </div>
+          <div>
+            <label for="editPreventiveCandidate">予防的対応候補</label>
+            <select id="editPreventiveCandidate">
+              <option>未評価</option>
+              <option>いいえ</option>
+              <option>はい</option>
+            </select>
+          </div>
+          <div>
+            <label for="editReason">修正理由（任意）</label>
+            <input id="editReason">
+          </div>
+          <div>
+            <label for="editMemo">メモ</label>
+            <textarea id="editMemo"></textarea>
+          </div>
+          <div>
+            <label for="editSafetyNote">安全メモ</label>
+            <textarea id="editSafetyNote"></textarea>
+          </div>
+          <div>
+            <label for="editRoadImportanceNote">道路重要度メモ</label>
+            <textarea id="editRoadImportanceNote"></textarea>
+          </div>
+          <div>
+            <label for="editPreventiveNote">予防保全メモ</label>
+            <textarea id="editPreventiveNote"></textarea>
+          </div>
+        </div>
+        <div class="quickGrid" style="margin-top:8px">
+          <button id="btnSaveEdit" class="primary">修正を保存</button>
+          <button id="btnCancelEdit" class="ghost">閉じる</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="manage" class="tab">
+    <div class="panel">
+      <strong>出力</strong>
+      <div class="outputGrid" style="margin-top:10px">
+        <button id="btnExportLegacyCsv" class="ghost">旧形式CSV</button>
+        <button id="btnExportSummaryCsv" class="green">実証用v2 サマリーCSV</button>
+        <button id="btnExportPointCsv" class="green">実証用v2 点CSV</button>
+        <button id="btnExportGeo" class="primary">実証用v2 GeoJSON</button>
+        <button id="btnExportViewer" class="primary">確認用HTML</button>
+        <button id="btnBackup" class="ghost">バックアップJSON</button>
+        <button id="btnImport" class="ghost">取込</button>
+      </div>
+      <input id="importFile" type="file" class="hidden" accept=".json,application/json">
+      <div class="notice" style="margin-top:10px">CSVはExcel・集計用、GeoJSONはGIS・機械解析用、確認用HTMLは説明用、バックアップJSONは再取込用です。通常出力は確認タブの抽出条件を反映し、未完了巡回は含めません。</div>
+    </div>
+    <div class="panel">
+      <strong>履歴削除</strong>
+      <div class="quickGrid" style="margin-top:10px">
+        <button id="btnDeleteLast" class="ghost">直前1件を削除</button>
+        <button id="btnDeleteAll" class="red">バックアップ済み全削除</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="footerBar">
+  <div class="footerInner">
+    <button id="footStart" class="primary">開始</button>
+    <button id="footA" class="green">A 良好</button>
+    <button id="footB" class="yellow">B 注意</button>
+    <button id="footC" class="red">C 要対応</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const APP_VERSION = "00_02";
+  const SCHEMA_VERSION = 2;
+  const CRITERIA_VERSION = "ABC-2026-09-16";
+  const LS_RECORDS = "road_patrol_records_v2";
+  const LS_SETTINGS = "road_patrol_settings_v2";
+  const LS_DRAFT = "road_patrol_draft_v2";
+  const LS_EVENTS = "road_patrol_events_v2";
+  const LEGACY_RECORDS = "road_patrol_records_00_00";
+  const LEGACY_SETTINGS = "road_patrol_settings_00_00";
+
+  const evalLabels = { A:"良好", B:"注意", C:"要対応" };
+  const $ = sel => document.querySelector(sel);
+  const $$ = sel => Array.from(document.querySelectorAll(sel));
+
+  let records = loadJSON(LS_RECORDS, []);
+  let settings = loadSettings();
+  let operationEvents = loadJSON(LS_EVENTS, []);
+  let activePatrol = loadJSON(LS_DRAFT, null);
+  let activeSegment = activePatrol ? activePatrol.active_segment : null;
+  let patrolActive = false;
+  let restoredDraft = !!activeSegment;
+  let pendingGapSplit = restoredDraft;
+  let watchId = null;
+  let currentCandidate = null;
+  let previousCandidate = null;
+  let lastSaveOk = true;
+  let forceNextSaveFailure = false;
+  let map = null;
+  let layerGroup = null;
+  let filterReady = false;
+
+  migrateLegacyRecords();
+
+  function uid(prefix){
+    return (prefix || "id") + "_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,8);
+  }
+
+  function nowIso(){ return new Date().toISOString(); }
+
+  function fmtDate(iso){
+    if(!iso) return "";
+    return new Date(iso).toLocaleString("ja-JP", {hour12:false, timeZone:"Asia/Tokyo"}) + " JST";
+  }
+
+  function fmtDateOnly(date){
+    const d = date instanceof Date ? date : new Date(date);
+    const pad = n => String(n).padStart(2, "0");
+    return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+  }
+
+  function loadJSON(key, fallback){
+    try{
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    }catch(e){
+      return fallback;
+    }
+  }
+
+  function loadSettings(){
+    const defaults = {
+      routeName:"",
+      observerId:"",
+      pointIntervalMs:3000,
+      pointDistanceM:3,
+      stalePositionMs:10000,
+      lowAccuracyM:30
+    };
+    return Object.assign(defaults, loadJSON(LS_SETTINGS, {}));
+  }
+
+  function safeSetJSON(key, value){
+    try{
+      if(forceNextSaveFailure){
+        forceNextSaveFailure = false;
+        throw new Error("debug save failure");
+      }
+      if(value == null) localStorage.removeItem(key);
+      else localStorage.setItem(key, JSON.stringify(value));
+      lastSaveOk = true;
+      setSaveState("保存状態: 保存済み", "good");
+      return true;
+    }catch(err){
+      lastSaveOk = false;
+      setSaveState("保存状態: 保存失敗（バックアップJSONで救出できます）", "bad");
+      message("保存に失敗しました。通常出力ではなくバックアップJSONで現在のメモリ上データを救出してください。", "bad");
+      return false;
+    }
+  }
+
+  function persistRecords(){
+    const ok = safeSetJSON(LS_RECORDS, records);
+    renderHistory();
+    return ok;
+  }
+
+  function persistDraft(){
+    const draft = activeSegment ? Object.assign({}, activePatrol, { active_segment: activeSegment, saved_at: nowIso() }) : null;
+    return safeSetJSON(LS_DRAFT, draft);
+  }
+
+  function persistEvents(){
+    return safeSetJSON(LS_EVENTS, operationEvents);
+  }
+
+  function saveSettings(){
+    settings.routeName = $("#routeName").value.trim();
+    settings.observerId = $("#observerId").value.trim();
+    settings.pointIntervalMs = Math.max(1, Number($("#pointIntervalSec").value || 3)) * 1000;
+    settings.pointDistanceM = Math.max(1, Number($("#pointDistanceM").value || 3));
+    settings.stalePositionMs = Math.max(3, Number($("#stalePositionSec").value || 10)) * 1000;
+    settings.lowAccuracyM = Math.max(5, Number($("#lowAccuracyM").value || 30));
+    safeSetJSON(LS_SETTINGS, settings);
+  }
+
+  function applySettings(){
+    $("#routeName").value = settings.routeName || "";
+    $("#observerId").value = settings.observerId || "";
+    $("#pointIntervalSec").value = Math.round((settings.pointIntervalMs || 3000) / 1000);
+    $("#pointDistanceM").value = settings.pointDistanceM || 3;
+    $("#stalePositionSec").value = Math.round((settings.stalePositionMs || 10000) / 1000);
+    $("#lowAccuracyM").value = settings.lowAccuracyM || 30;
+  }
+
+  function message(text, type){
+    const el = $("#message");
+    if(!el) return;
+    el.textContent = text;
+    el.className = "notice" + (type === "bad" ? " bad" : type === "good" ? " good" : "");
+  }
+
+  function setSaveState(text, tone){
+    const el = $("#saveState");
+    if(!el) return;
+    el.textContent = text;
+    el.style.color = tone === "bad" ? "#991b1b" : tone === "good" ? "#166534" : "";
+  }
+
+  function startPatrol(){
+    if(activeSegment && !patrolActive){
+      message("中断巡回があります。再開または中断分を保存して終了してください。", "bad");
+      return;
+    }
+    saveSettings();
+    const patrolId = uid("patrol");
+    activePatrol = {
+      schema_version:SCHEMA_VERSION,
+      app_version:APP_VERSION,
+      patrol_id:patrolId,
+      observer_id:$("#observerId").value.trim() || null,
+      started_at:nowIso(),
+      settings_snapshot:currentSettingsSnapshot(),
+      operation_events:[]
+    };
+    activeSegment = null;
+    patrolActive = true;
+    restoredDraft = false;
+    pendingGapSplit = false;
+    resetPositionState();
+    updatePatrolUi();
+    startGPS();
+    addOperationEvent("patrol_start", {patrol_id:patrolId});
+    persistDraft();
+    message("パトロールを開始しました。最初の評価を押してください。評価未選択の間は区間を作成しません。", "good");
+  }
+
+  function resumeDraft(){
+    if(!activeSegment || !activePatrol) return;
+    patrolActive = true;
+    restoredDraft = false;
+    pendingGapSplit = true;
+    resetPositionState();
+    updatePatrolUi();
+    startGPS();
+    addOperationEvent("patrol_resume", {patrol_id:activePatrol.patrol_id});
+    persistDraft();
+    message("中断巡回を再開しました。再捕捉点から別区間として記録し、空白時間を直線でつなぎません。", "good");
+  }
+
+  function closeDraft(){
+    if(!activeSegment) return;
+    finishActiveSegment({status:"interrupted", splitReason:"closed_after_reload", endpoint:null});
+    activeSegment = null;
+    activePatrol = null;
+    patrolActive = false;
+    restoredDraft = false;
+    pendingGapSplit = false;
+    persistDraft();
+    updatePatrolUi();
+    message("中断分を保存して終了しました。", "good");
+  }
+
+  function endPatrol(){
+    if(activeSegment){
+      const endpoint = currentValidPointForAction("終了");
+      finishActiveSegment({status:"complete", splitReason:"patrol_end", endpoint});
+    }
+    addOperationEvent("patrol_end", {patrol_id:activePatrol ? activePatrol.patrol_id : null});
+    activeSegment = null;
+    activePatrol = null;
+    patrolActive = false;
+    restoredDraft = false;
+    pendingGapSplit = false;
+    stopGPS();
+    persistDraft();
+    persistEvents();
+    updateEvalButtons();
+    updatePatrolUi();
+    message("パトロールを終了しました。GPS監視を停止しました。", "good");
+  }
+
+  function startGPS(){
+    if(watchId !== null) return;
+    if(!("geolocation" in navigator)){
+      setGpsState("GPS不可", "bad");
+      message("このブラウザでは位置情報が使えません。", "bad");
+      return;
+    }
+    setGpsState("捕捉中", "warn");
+    watchId = navigator.geolocation.watchPosition(onPosition, onGpsError, {
+      enableHighAccuracy:true,
+      maximumAge:1000,
+      timeout:15000
+    });
+  }
+
+  function stopGPS(){
+    if(watchId !== null){
+      navigator.geolocation.clearWatch(watchId);
+      watchId = null;
+    }
+    resetPositionState();
+    setGpsState("未捕捉", "");
+  }
+
+  function resetPositionState(){
+    currentCandidate = null;
+    previousCandidate = null;
+    $("#positionState").textContent = "未捕捉";
+    $("#directionState").textContent = "方向: -";
+  }
+
+  function onGpsError(err){
+    let text = "GPS取得失敗";
+    if(err && err.code === 1) text = "位置情報未許可";
+    if(err && err.code === 2) text = "現在地未取得";
+    if(err && err.code === 3) text = "GPSタイムアウト";
+    setGpsState(text, "bad");
+    $("#positionState").textContent = text;
+    addOperationEvent("gps_error", {message:text});
+    persistEvents();
+    message("GPS受信に問題があります。再捕捉後はギャップとして区間を分けます。", "bad");
+  }
+
+  function onPosition(pos){
+    const receivedAt = pos.receivedAt || nowIso();
+    const point = positionToPoint(pos, receivedAt);
+    currentCandidate = point;
+    previousCandidate = point;
+    const tone = point.quality_flags.includes("low_accuracy") ? "warn" : "good";
+    setGpsState(tone === "good" ? "捕捉OK" : "低精度", tone);
+    $("#positionState").textContent = point.accuracy_m == null ? "精度 -" : "精度 " + point.accuracy_m + "m";
+    $("#directionState").textContent = "方向: " + (point.direction_deg == null ? "不明" : point.direction_deg + "度");
+    if(patrolActive && activeSegment) maybeAppendSegmentPoint(point);
+  }
+
+  function setGpsState(text, tone){
+    $("#gpsState").textContent = text;
+    $("#gpsDot").className = "dot " + (tone || "");
+  }
+
+  function positionToPoint(pos, receivedAt){
+    const c = pos.coords || {};
+    const base = {
+      point_id: uid("pt"),
+      observed_at: pos.timestamp ? new Date(pos.timestamp).toISOString() : null,
+      received_at: receivedAt || nowIso(),
+      lat: Number(c.latitude),
+      lng: Number(c.longitude),
+      accuracy_m: c.accuracy == null || Number.isNaN(Number(c.accuracy)) ? null : Math.round(Number(c.accuracy)),
+      direction_deg:null,
+      direction_source:"unknown",
+      quality_flags:[]
+    };
+    const heading = c.heading == null || Number.isNaN(Number(c.heading)) ? null : Math.round(normalizeDeg(Number(c.heading)));
+    if(heading != null){
+      base.direction_deg = heading;
+      base.direction_source = "gps";
+    }else if(previousCandidate && validCoordinate(previousCandidate) && validCoordinate(base)){
+      base.direction_deg = Math.round(bearing(previousCandidate, base));
+      base.direction_source = "computed";
+    }
+    if(base.accuracy_m != null && base.accuracy_m > currentSettingsSnapshot().lowAccuracyM) base.quality_flags.push("low_accuracy");
+    return base;
+  }
+
+  function currentValidPointForAction(actionName){
+    if(!currentCandidate || !validCoordinate(currentCandidate)){
+      message(actionName + "には現在地が必要です。GPS捕捉を待ってください。", "bad");
+      startGPS();
+      return null;
+    }
+    const age = Date.now() - Date.parse(currentCandidate.observed_at || currentCandidate.received_at || 0);
+    const staleLimit = currentSettingsSnapshot().stalePositionMs;
+    if(age > staleLimit){
+      message(actionName + "できません。位置情報が古いため、再取得を待ってください。", "bad");
+      return null;
+    }
+    const point = clonePoint(currentCandidate);
+    if(point.accuracy_m != null && point.accuracy_m > currentSettingsSnapshot().lowAccuracyM){
+      addFlag(point.quality_flags, "low_accuracy");
+      message("低精度ですが記録します。品質フラグに残します。", "bad");
+    }
+    return point;
+  }
+
+  function switchEval(evalCode){
+    if(!patrolActive){
+      startPatrol();
+      if(!patrolActive) return;
+    }
+    const point = currentValidPointForAction("評価開始・切替");
+    if(!point) return;
+    const operationAt = nowIso();
+    if(activeSegment && activeSegment.eval_code === evalCode){
+      message(evalCode + "評価を継続中です。同じ評価で区切る場合は専用ボタンを押してください。", "good");
+      return;
+    }
+    if(activeSegment){
+      const boundary = appendBoundaryPoint(activeSegment, point);
+      finishActiveSegment({status:"complete", splitReason:"eval_change", endpoint:null, endedAt:operationAt});
+      startSegment(evalCode, clonePoint(boundary), operationAt, "eval_change");
+    }else{
+      startSegment(evalCode, point, operationAt, "eval_start");
+    }
+    addOperationEvent("eval_switch", {eval_code:evalCode, operation_at:operationAt, point_id:point.point_id});
+    persistDraft();
+  }
+
+  function splitSameEval(){
+    if(!patrolActive || !activeSegment){
+      message("区切る対象の評価区間がありません。", "bad");
+      return;
+    }
+    const point = currentValidPointForAction("同じ評価で区切り");
+    if(!point) return;
+    const evalCode = activeSegment.eval_code;
+    const operationAt = nowIso();
+    const boundary = appendBoundaryPoint(activeSegment, point);
+    finishActiveSegment({status:"complete", splitReason:"manual_same_eval_split", endpoint:null, endedAt:operationAt});
+    startSegment(evalCode, clonePoint(boundary), operationAt, "manual_same_eval_split");
+    addOperationEvent("manual_same_eval_split", {eval_code:evalCode, operation_at:operationAt, point_id:boundary.point_id});
+    persistDraft();
+    message(evalCode + "評価のまま区間を分けました。", "good");
+  }
+
+  function startSegment(evalCode, point, operationAt, startReason){
+    const attrs = currentFormSnapshot();
+    activeSegment = Object.assign(baseRecord("segment"), attrs, {
+      id:uid("seg"),
+      patrol_id:activePatrol.patrol_id,
+      observer_id:activePatrol.observer_id,
+      started_at:operationAt || nowIso(),
+      ended_at:null,
+      eval_code:evalCode,
+      eval_label:evalLabels[evalCode],
+      original_eval_code:evalCode,
+      spot_type:null,
+      points:[point],
+      start_reason:startReason || "eval_start",
+      split_reason:null,
+      operation_events:[]
+    });
+    activePatrol.active_segment = activeSegment;
+    updateEvalButtons();
+    updatePatrolUi();
+    message(evalCode + "区間の記録を開始しました。", "good");
+  }
+
+  function maybeAppendSegmentPoint(point){
+    if(!activeSegment) return;
+    const last = lastPoint(activeSegment);
+    const gap = last && point.received_at && last.received_at ? Date.parse(point.received_at) - Date.parse(last.received_at) : 0;
+    if(pendingGapSplit || gap > currentSettingsSnapshot().stalePositionMs){
+      const evalCode = activeSegment.eval_code;
+      finishActiveSegment({status:"complete", splitReason:pendingGapSplit ? "resume_after_interruption" : "gps_gap", endpoint:null});
+      startSegment(evalCode, clonePoint(point), nowIso(), "gps_gap_continue");
+      pendingGapSplit = false;
+      persistDraft();
+      return;
+    }
+    const elapsed = last && point.received_at && last.received_at ? Date.parse(point.received_at) - Date.parse(last.received_at) : Infinity;
+    const moved = last ? distanceMeters(last, point) : Infinity;
+    const s = currentSettingsSnapshot();
+    if(elapsed < s.pointIntervalMs && moved < s.pointDistanceM) return;
+    activeSegment.points.push(clonePoint(point));
+    addOperationEvent("point_adopted", {record_id:activeSegment.id, point_id:point.point_id});
+    activePatrol.active_segment = activeSegment;
+    persistDraft();
+    updatePatrolUi();
+  }
+
+  function finishActiveSegment(options){
+    if(!activeSegment) return null;
+    const opts = options || {};
+    if(opts.endpoint) appendBoundaryPoint(activeSegment, opts.endpoint);
+    const record = Object.assign({}, activeSegment);
+    record.ended_at = opts.endedAt || nowIso();
+    record.record_status = opts.status || "complete";
+    record.split_reason = opts.splitReason || record.split_reason || null;
+    applyGeometryMeta(record);
+    records.push(record);
+    persistRecords();
+    addOperationEvent("segment_finished", {record_id:record.id, status:record.record_status, split_reason:record.split_reason});
+    activeSegment = null;
+    if(activePatrol) activePatrol.active_segment = null;
+    persistDraft();
+    return record;
+  }
+
+  function appendBoundaryPoint(segment, point){
+    const last = lastPoint(segment);
+    if(last && sameObservation(last, point)) return last;
+    const boundary = clonePoint(point);
+    segment.points.push(boundary);
+    return boundary;
+  }
+
+  function addSpot(spotType){
+    if(!patrolActive){
+      startPatrol();
+      if(!patrolActive) return;
+    }
+    const point = currentValidPointForAction("スポット登録");
+    if(!point) return;
+    const attrs = currentFormSnapshot();
+    const rec = Object.assign(baseRecord("spot"), attrs, {
+      id:uid("spot"),
+      patrol_id:activePatrol.patrol_id,
+      observer_id:activePatrol.observer_id,
+      created_at:nowIso(),
+      spot_type:spotType,
+      point,
+      points:[point],
+      geometry_status:"point",
+      length_m:null,
+      length_method:"not_applicable"
+    });
+    records.push(rec);
+    persistRecords();
+    addOperationEvent("spot_added", {record_id:rec.id, spot_type:spotType, point_id:point.point_id});
+    persistEvents();
+    message(spotType + "をスポット記録しました。", "good");
+  }
+
+  function renderHistory(){
+    const visible = filteredRecords();
+    updateSummary(visible);
+    const box = $("#recordList");
+    if(visible.length === 0){
+      box.innerHTML = "<div class='hint'>この条件に合う記録がありません。</div>";
+      return;
+    }
+    box.innerHTML = "";
+    visible.slice().reverse().forEach(rec => {
+      const div = document.createElement("div");
+      div.className = "recordLine";
+      const isSegment = rec.kind === "segment";
+      const p = representativePoint(pointsOf(rec));
+      const title = isSegment
+        ? rec.eval_code + " " + rec.eval_label + " 区間"
+        : rec.spot_type + " スポット";
+      div.innerHTML = `
+        <div class="recordTop">
+          <div>
+            <span class="badge ${isSegment ? rec.eval_code : "S"}">${isSegment ? rec.eval_code : "!"}</span>
+            <strong>${escapeHtml(title)}</strong>
+            <div class="meta">${escapeHtml(fmtDate(recordStartTime(rec)))} / ${escapeHtml(rec.category || "種別なし")} / ${escapeHtml(rec.lane_side || "方向自動")}</div>
+            <div class="meta">巡回ID ${escapeHtml(rec.patrol_id || "-")} / 点数 ${pointsOf(rec).length} / 方位 ${formatDirection(p)}</div>
+            <div class="meta">品質 ${escapeHtml(JSON.stringify(rec.quality_flags || []))} / 状態 ${escapeHtml(rec.record_status || "complete")}</div>
+          </div>
+          <div class="row">
+            <button class="small ghost editOne" data-id="${rec.id}">修正</button>
+            <button class="small ghost deleteOne" data-id="${rec.id}">削除</button>
+          </div>
+        </div>
+      `;
+      box.appendChild(div);
+    });
+    $$(".editOne").forEach(btn => btn.addEventListener("click", () => openEdit(btn.dataset.id)));
+    $$(".deleteOne").forEach(btn => btn.addEventListener("click", () => deleteOne(btn.dataset.id)));
+  }
+
+  function initFilters(){
+    if(filterReady) return;
+    applyQuickFilter("7days");
+    filterReady = true;
+  }
+
+  function applyQuickFilter(range){
+    const today = new Date();
+    if(range === "all"){
+      $("#filterFrom").value = "";
+      $("#filterTo").value = "";
+    }else if(range === "today"){
+      const d = fmtDateOnly(today);
+      $("#filterFrom").value = d;
+      $("#filterTo").value = d;
+    }else if(range === "month"){
+      $("#filterFrom").value = fmtDateOnly(new Date(today.getFullYear(), today.getMonth(), 1));
+      $("#filterTo").value = fmtDateOnly(today);
+    }else{
+      const from = new Date(today);
+      from.setDate(today.getDate() - 6);
+      $("#filterFrom").value = fmtDateOnly(from);
+      $("#filterTo").value = fmtDateOnly(today);
+    }
+    renderHistory();
+    refreshMap();
+  }
+
+  function filteredRecords(){
+    const fromValue = $("#filterFrom") ? $("#filterFrom").value : "";
+    const toValue = $("#filterTo") ? $("#filterTo").value : "";
+    const from = fromValue ? new Date(fromValue + "T00:00:00+09:00") : null;
+    const to = toValue ? new Date(toValue + "T23:59:59.999+09:00") : null;
+    const patrolId = ($("#filterPatrolId") && $("#filterPatrolId").value.trim()) || "";
+    const observerId = ($("#filterObserverId") && $("#filterObserverId").value.trim()) || "";
+    const evalFilter = ($("#filterEval") && $("#filterEval").value) || "";
+    const spotFilter = ($("#filterSpot") && $("#filterSpot").value) || "";
+    return records.filter(rec => {
+      const time = new Date(recordStartTime(rec));
+      if(Number.isNaN(time.getTime())) return false;
+      if(from && time < from) return false;
+      if(to && time > to) return false;
+      if(patrolId && String(rec.patrol_id || "").indexOf(patrolId) === -1) return false;
+      if(observerId && String(rec.observer_id || "").indexOf(observerId) === -1) return false;
+      if(evalFilter === "spot" && rec.kind !== "spot") return false;
+      if(evalFilter && evalFilter !== "spot" && rec.eval_code !== evalFilter) return false;
+      if(spotFilter && rec.spot_type !== spotFilter) return false;
+      return true;
+    });
+  }
+
+  function recordStartTime(rec){
+    return rec.kind === "segment" ? rec.started_at : rec.created_at;
+  }
+
+  function updateSummary(visible){
+    const lengths = {A:0, B:0, C:0};
+    let segments = 0;
+    let spots = 0;
+    visible.forEach(rec => {
+      if(rec.kind === "segment"){
+        segments++;
+        if(lengths[rec.eval_code] != null && typeof rec.length_m === "number") lengths[rec.eval_code] += rec.length_m;
+      }else if(rec.kind === "spot"){
+        spots++;
+      }
+    });
+    $("#recordCount").textContent = visible.length;
+    $("#allRecordCount").textContent = records.length;
+    $("#summarySegments").textContent = segments;
+    $("#summarySpots").textContent = spots;
+    $("#summaryLenA").textContent = Math.round(lengths.A);
+    $("#summaryLenB").textContent = Math.round(lengths.B);
+    $("#summaryLenC").textContent = Math.round(lengths.C);
+    $("#summaryDraft").textContent = activeSegment ? 1 : 0;
+  }
+
+  function deleteOne(id){
+    if(!confirm("この記録を削除しますか？")) return;
+    records = records.filter(r => r.id !== id);
+    persistRecords();
+    refreshMap();
+  }
+
+  function deleteLast(){
+    if(records.length === 0){
+      message("削除する記録がありません。", "bad");
+      return;
+    }
+    if(!confirm("直前の1件を削除しますか？")) return;
+    records.pop();
+    persistRecords();
+    refreshMap();
+  }
+
+  function deleteAll(){
+    if(!confirm("バックアップ済みの前提で、全履歴を削除しますか？この操作は元に戻せません。")) return;
+    records = [];
+    persistRecords();
+    refreshMap();
+    message("全履歴を削除しました。", "good");
+  }
+
+  function exportLegacyCSV(){
+    const headers = [
+      "id","kind","start_time","end_time","eval","spot","category","lane_side","route_name",
+      "start_lat","start_lng","end_lat","end_lng","rep_lat","rep_lng","length_m","direction_deg","point_count","memo"
+    ];
+    const rows = filteredRecords().map(rec => {
+      const isSegment = rec.kind === "segment";
+      const pts = pointsOf(rec);
+      const start = pts[0] || null;
+      const end = pts[pts.length - 1] || null;
+      const rep = representativePoint(pts);
+      return [
+        rec.id,
+        rec.kind,
+        isSegment ? rec.started_at : rec.created_at,
+        isSegment ? rec.ended_at : "",
+        isSegment ? rec.eval_code : "",
+        isSegment ? "" : rec.spot_type,
+        rec.category || "",
+        rec.lane_side || "",
+        rec.route_name || "",
+        start ? start.lat : "",
+        start ? start.lng : "",
+        end ? end.lat : "",
+        end ? end.lng : "",
+        rep ? rep.lat : "",
+        rep ? rep.lng : "",
+        isSegment ? (rec.length_m == null ? "" : Math.round(rec.length_m)) : 0,
+        rep && rep.direction_deg != null ? rep.direction_deg : "",
+        pts.length,
+        rec.memo || ""
+      ].map(csvEscape).join(",");
+    });
+    downloadText("\ufeff" + headers.map(csvEscape).join(",") + "\n" + rows.join("\n"), fileName("road_patrol_" + APP_VERSION + "_legacy", "csv"), "text/csv");
+  }
+
+  function exportSummaryCSV(){
+    const headers = [
+      "id","kind","start_time","end_time","eval","spot","category","lane_side","route_name",
+      "start_lat","start_lng","end_lat","end_lng","rep_lat","rep_lng","length_m","direction_deg","point_count","memo",
+      "schema_version","patrol_id","observer_id","source_type","road_section_id","record_status","quality_flags","length_method",
+      "app_version","criteria_version","damage_types","safety_concern","safety_note","traffic_level","road_importance_note",
+      "preventive_candidate","preventive_note","geometry_status","split_reason"
+    ];
+    const rows = filteredRecords().map(rec => {
+      const pts = pointsOf(rec);
+      const start = pts[0] || null;
+      const end = pts[pts.length - 1] || null;
+      const rep = representativePoint(pts);
+      return [
+        rec.id, rec.kind, recordStartTime(rec), rec.ended_at || "", rec.eval_code || "", rec.spot_type || "",
+        rec.category || "", rec.lane_side || "", rec.route_name || "",
+        start ? start.lat : "", start ? start.lng : "", end ? end.lat : "", end ? end.lng : "",
+        rep ? rep.lat : "", rep ? rep.lng : "", rec.length_m == null ? "" : Math.round(rec.length_m),
+        rep && rep.direction_deg != null ? rep.direction_deg : "", pts.length, rec.memo || "",
+        rec.schema_version || SCHEMA_VERSION, rec.patrol_id || "", rec.observer_id || "", rec.source_type || "patrol",
+        rec.road_section_id || "", rec.record_status || "complete", JSON.stringify(rec.quality_flags || []),
+        rec.length_method || "", rec.app_version || APP_VERSION, rec.criteria_version || CRITERIA_VERSION,
+        JSON.stringify(rec.damage_types || []), rec.safety_concern || "未評価", rec.safety_note || "",
+        rec.traffic_level || "未評価", rec.road_importance_note || "", rec.preventive_candidate || "未評価",
+        rec.preventive_note || "", rec.geometry_status || "", rec.split_reason || ""
+      ].map(csvEscape).join(",");
+    });
+    downloadText("\ufeff" + headers.map(csvEscape).join(",") + "\n" + rows.join("\n"), fileName("road_patrol_" + APP_VERSION + "_v2_summary", "csv"), "text/csv");
+  }
+
+  function exportPointCSV(){
+    const headers = ["schema_version","record_id","kind","patrol_id","point_id","sequence","eval_code","spot_type","observed_at","received_at","lat","lng","accuracy_m","direction_deg","direction_source","quality_flags"];
+    const rows = [];
+    filteredRecords().forEach(rec => {
+      pointsOf(rec).forEach((p, index) => {
+        rows.push([
+          rec.schema_version || SCHEMA_VERSION, rec.id, rec.kind, rec.patrol_id || "", p.point_id || "",
+          index + 1, rec.eval_code || "", rec.spot_type || "", p.observed_at || "", p.received_at || "",
+          p.lat, p.lng, p.accuracy_m == null ? "" : p.accuracy_m, p.direction_deg == null ? "" : p.direction_deg,
+          p.direction_source || "unknown", JSON.stringify(p.quality_flags || [])
+        ].map(csvEscape).join(","));
+      });
+    });
+    downloadText("\ufeff" + headers.map(csvEscape).join(",") + "\n" + rows.join("\n"), fileName("road_patrol_" + APP_VERSION + "_v2_points", "csv"), "text/csv");
+  }
+
+  function toGeoJSON(sourceRecords){
+    const source = sourceRecords || filteredRecords();
+    return {
+      type:"FeatureCollection",
+      features:source.map(rec => {
+        const pts = pointsOf(rec);
+        const isLine = rec.kind === "segment" && pts.length > 1;
+        const rep = representativePoint(pts);
+        return {
+          type:"Feature",
+          geometry:isLine ? {
+            type:"LineString",
+            coordinates:pts.map(pt => [pt.lng, pt.lat])
+          } : {
+            type:"Point",
+            coordinates:pts[0] ? [pts[0].lng, pts[0].lat] : [null, null]
+          },
+          properties:{
+            id:rec.id,
+            kind:rec.kind,
+            schema_version:rec.schema_version || SCHEMA_VERSION,
+            app_version:rec.app_version || APP_VERSION,
+            start_time:recordStartTime(rec),
+            end_time:rec.kind === "segment" ? rec.ended_at : "",
+            eval:rec.eval_code || "",
+            spot:rec.spot_type || "",
+            category:rec.category || "",
+            lane_side:rec.lane_side || "",
+            route_name:rec.route_name || "",
+            road_section_id:rec.road_section_id || null,
+            patrol_id:rec.patrol_id || null,
+            observer_id:rec.observer_id || null,
+            source_type:rec.source_type || "patrol",
+            record_status:rec.record_status || "complete",
+            memo:rec.memo || "",
+            length_m:rec.length_m == null ? null : rec.length_m,
+            length_method:rec.length_method || null,
+            direction_deg:rep && rep.direction_deg != null ? rep.direction_deg : null,
+            point_count:pts.length,
+            quality_flags:rec.quality_flags || [],
+            criteria_version:rec.criteria_version || CRITERIA_VERSION,
+            damage_types:rec.damage_types || [],
+            safety_concern:rec.safety_concern || "未評価",
+            safety_note:rec.safety_note || "",
+            traffic_level:rec.traffic_level || "未評価",
+            road_importance_note:rec.road_importance_note || "",
+            preventive_candidate:rec.preventive_candidate || "未評価",
+            preventive_note:rec.preventive_note || "",
+            geometry_status:rec.geometry_status || null,
+            split_reason:rec.split_reason || null,
+            point_meta:pts.map((pt, index) => ({
+              point_id:pt.point_id || null,
+              sequence:index + 1,
+              observed_at:pt.observed_at || null,
+              received_at:pt.received_at || null,
+              accuracy_m:pt.accuracy_m == null ? null : pt.accuracy_m,
+              direction_deg:pt.direction_deg == null ? null : pt.direction_deg,
+              direction_source:pt.direction_source || "unknown",
+              quality_flags:pt.quality_flags || []
+            }))
+          }
+        };
+      })
+    };
+  }
+
+  function exportGeoJSON(){
+    downloadText(JSON.stringify(toGeoJSON(), null, 2), fileName("road_patrol_" + APP_VERSION + "_v2", "geojson"), "application/geo+json");
+  }
+
+  function exportViewerHTML(){
+    const embedded = filteredRecords();
+    const data = JSON.stringify(embedded).replace(/</g, "\\u003c");
+    const period = filterPeriodLabel();
+    const html = `<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>道路劣化パトロール確認</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script>
+<style>
+body{margin:0;background:#f4f6f8;color:#18202a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}
+header{padding:12px 14px;background:#fff;border-bottom:1px solid #dfe5ec}
+h1{font-size:18px;margin:0}.hint{font-size:12px;color:#65717f}.panel{background:#fff;border:1px solid #dfe5ec;border-radius:8px;margin:10px;padding:12px}
+#map{height:62vh;min-height:360px;border:1px solid #dfe5ec;border-radius:8px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}input,button{min-height:42px;border-radius:8px;border:1px solid #dfe5ec;padding:8px;font:inherit}button{font-weight:800;background:#e8eef3}.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}.item{background:#f8fafc;border:1px solid #dfe5ec;border-radius:8px;padding:8px}.item strong{font-size:20px}.line{border-top:1px solid #dfe5ec;padding:8px 0;font-size:13px}.badge{display:inline-flex;align-items:center;justify-content:center;width:26px;height:24px;border-radius:999px;color:#fff;font-weight:900}.A{background:#15803d}.B{background:#b45309}.C{background:#b91c1c}.S{background:#155e75}.arrowMarker{width:22px;height:22px;position:relative}.arrowMarker:before{content:"";position:absolute;left:8px;top:1px;border-left:4px solid transparent;border-right:4px solid transparent;border-bottom:14px solid var(--arrow-color,#155e75)}.arrowMarker:after{content:"";position:absolute;left:9px;top:13px;width:4px;height:8px;background:var(--arrow-color,#155e75);border-radius:2px}
+@media(max-width:640px){.grid{grid-template-columns:1fr}.summary{grid-template-columns:repeat(2,1fr)}#map{height:54vh}}
+</style>
+</head>
+<body>
+<header><h1>道路劣化パトロール確認</h1><div class="hint">埋込対象: ${escapeHtml(period)} / 初期表示は埋め込まれた全件です。</div></header>
+<div class="panel"><div id="map"></div></div>
+<div class="panel">
+  <strong>抽出条件</strong>
+  <div class="grid" style="margin-top:8px"><input id="from" type="date"><input id="to" type="date"></div>
+  <div class="grid" style="margin-top:8px"><button data-range="all">埋込全件</button><button data-range="today">今日</button><button data-range="7days">直近7日</button><button data-range="month">今月</button></div>
+  <div class="summary"><div class="item">表示<strong id="total">0</strong></div><div class="item">A<strong id="a">0</strong></div><div class="item">B<strong id="b">0</strong></div><div class="item">C<strong id="c">0</strong></div></div>
+  <div class="hint">このHTMLには出力時の抽出集合だけを埋め込んでいます。埋込全件を押しても除外データは表示されません。</div>
+</div>
+<div class="panel"><strong>軌跡・スポット</strong><div id="list"></div></div>
+<script>
+const records = ${data};
+const $ = s => document.querySelector(s);
+let map=null, layer=null;
+try{if(window.L){map=L.map("map").setView([35.68,139.76],13);L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"&copy; OpenStreetMap contributors"}).addTo(map);layer=L.layerGroup().addTo(map)}}catch(e){document.getElementById("map").innerHTML="<div style='padding:12px'>地図を読み込めませんでした。一覧と件数は利用できます。</div>"}
+function dateOnly(d){const p=n=>String(n).padStart(2,"0");return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())}
+function setRange(r){const t=new Date();if(r==="all"){$("#from").value="";$("#to").value=""}else if(r==="today"){const d=dateOnly(t);$("#from").value=d;$("#to").value=d}else if(r==="month"){$("#from").value=dateOnly(new Date(t.getFullYear(),t.getMonth(),1));$("#to").value=dateOnly(t)}else{const f=new Date(t);f.setDate(t.getDate()-6);$("#from").value=dateOnly(f);$("#to").value=dateOnly(t)}render()}
+function startTime(r){return r.kind==="segment"?r.started_at:r.created_at}
+function points(r){return r.kind==="segment"?(r.points||[]):(r.point?[r.point]:(r.points||[]))}
+function visible(){const f=$("#from").value?new Date($("#from").value+"T00:00:00+09:00"):null;const t=$("#to").value?new Date($("#to").value+"T23:59:59.999+09:00"):null;return records.filter(r=>{const d=new Date(startTime(r));return (!f||d>=f)&&(!t||d<=t)})}
+function color(e){return e==="A"?"#15803d":e==="B"?"#b45309":e==="C"?"#b91c1c":"#155e75"}
+function arrow(p,e,text){if(!map||!layer||!p)return;if(p.direction_deg==null){L.circleMarker([p.lat,p.lng],{radius:7,color:color(e),fillColor:color(e),fillOpacity:.8}).addTo(layer).bindPopup(text);return}const html="<div class='arrowMarker' style='--arrow-color:"+color(e)+";transform:rotate("+Number(p.direction_deg)+"deg)'></div>";L.marker([p.lat,p.lng],{icon:L.divIcon({className:"",html,iconSize:[22,22],iconAnchor:[11,11]})}).addTo(layer).bindPopup(text)}
+function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;")}
+function render(){const rows=visible();if(layer)layer.clearLayers();const b=[];const counts={A:0,B:0,C:0};$("#list").innerHTML="";rows.slice().reverse().forEach(r=>{const seg=r.kind==="segment";if(seg&&counts[r.eval_code]!=null)counts[r.eval_code]++;const pts=points(r);const p=pts[Math.floor(pts.length/2)];const name=seg?r.eval_code+" "+r.eval_label+" 区間":r.spot_type+" スポット";const div=document.createElement("div");div.className="line";div.innerHTML="<span class='badge "+(seg?r.eval_code:"S")+"'>"+(seg?r.eval_code:"!")+"</span> <strong>"+esc(name)+"</strong><div class='hint'>"+new Date(startTime(r)).toLocaleString("ja-JP",{hour12:false,timeZone:"Asia/Tokyo"})+" JST / "+esc(r.category||"種別なし")+" / 方位 "+(p&&p.direction_deg!=null?p.direction_deg+"度":"不明")+"</div>";$("#list").appendChild(div);if(map&&layer&&seg&&pts.length>1){const ll=pts.map(p=>[p.lat,p.lng]);L.polyline(ll,{color:color(r.eval_code),weight:6,opacity:.82}).addTo(layer);arrow(p,r.eval_code,name);ll.forEach(x=>b.push(x))}else if(map&&layer&&pts[0]){arrow(pts[0],seg?r.eval_code:"S",name);b.push([pts[0].lat,pts[0].lng])}});$("#total").textContent=rows.length;$("#a").textContent=counts.A;$("#b").textContent=counts.B;$("#c").textContent=counts.C;if(map&&b.length)map.fitBounds(b,{padding:[28,28],maxZoom:17});if(map)setTimeout(()=>map.invalidateSize(),50)}
+document.querySelectorAll("button[data-range]").forEach(b=>b.addEventListener("click",()=>setRange(b.dataset.range)));$("#from").addEventListener("change",render);$("#to").addEventListener("change",render);setRange("all");
+<\/script>
+</body>
+</html>`;
+    downloadText(html, fileName("road_patrol_" + APP_VERSION + "_viewer", "html"), "text/html");
+  }
+
+  function backupJSON(){
+    const data = {
+      app:"road_patrol",
+      schema_version:SCHEMA_VERSION,
+      app_version:APP_VERSION,
+      exported_at:nowIso(),
+      settings,
+      records,
+      draft: activeSegment ? Object.assign({}, activePatrol, {active_segment:activeSegment}) : null,
+      operation_events:operationEvents
+    };
+    downloadText(JSON.stringify(data, null, 2), fileName("road_patrol_" + APP_VERSION + "_backup", "json"), "application/json");
+  }
+
+  function importJSON(file){
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      try{
+        const data = JSON.parse(e.target.result);
+        const imported = Array.isArray(data) ? data : data.records;
+        if(!Array.isArray(imported)) throw new Error("records not found");
+        if(!confirm(imported.length + "件を検証して取り込みますか？")) return;
+        const result = importRecords(imported);
+        if(data.settings) settings = Object.assign(settings, data.settings);
+        if(data.draft && !activeSegment) {
+          activePatrol = data.draft;
+          activeSegment = data.draft.active_segment || null;
+          restoredDraft = !!activeSegment;
+          pendingGapSplit = restoredDraft;
+          persistDraft();
+        }
+        safeSetJSON(LS_SETTINGS, settings);
+        applySettings();
+        persistRecords();
+        updatePatrolUi();
+        message(`取込: 追加${result.added}件 / スキップ${result.skipped}件 / 競合${result.conflicts}件 / エラー${result.errors}件`, result.errors || result.conflicts ? "bad" : "good");
+      }catch(err){
+        message("バックアップJSONを読み込めませんでした。", "bad");
+      }
+    };
+    reader.readAsText(file, "utf-8");
+  }
+
+  function currentSettingsSnapshot(){
+    return {
+      pointIntervalMs: Math.max(1, Number($("#pointIntervalSec") ? $("#pointIntervalSec").value : 3)) * 1000,
+      pointDistanceM: Math.max(1, Number($("#pointDistanceM") ? $("#pointDistanceM").value : 3)),
+      stalePositionMs: Math.max(3, Number($("#stalePositionSec") ? $("#stalePositionSec").value : 10)) * 1000,
+      lowAccuracyM: Math.max(5, Number($("#lowAccuracyM") ? $("#lowAccuracyM").value : 30))
+    };
+  }
+
+  function currentFormSnapshot(){
+    return {
+      category: $("#category").value || "",
+      lane_side: $("#laneSide").value || "",
+      route_name: $("#routeName").value.trim(),
+      road_section_id: $("#roadSectionId").value.trim() || null,
+      memo: $("#memo").value.trim(),
+      damage_types: $$("input[name='damageType']:checked").map(x => x.value),
+      safety_concern: $("#safetyConcern").value || "未評価",
+      safety_note: $("#safetyNote").value.trim(),
+      traffic_level: $("#trafficLevel").value || "未評価",
+      road_importance_note: $("#roadImportanceNote").value.trim(),
+      preventive_candidate: $("#preventiveCandidate").value || "未評価",
+      preventive_note: $("#preventiveNote").value.trim(),
+      criteria_version: CRITERIA_VERSION
+    };
+  }
+
+  function baseRecord(kind){
+    return {
+      schema_version:SCHEMA_VERSION,
+      app_version:APP_VERSION,
+      kind,
+      source_type:"patrol",
+      record_status:"complete",
+      quality_flags:[],
+      length_m:null,
+      length_method:null,
+      geometry_status:null,
+      revision_history:[],
+      legacy:false
+    };
+  }
+
+  function pointsOf(rec){
+    if(!rec) return [];
+    if(rec.kind === "segment") return rec.points || [];
+    if(rec.point) return [rec.point];
+    return rec.points || [];
+  }
+
+  function clonePoint(point){
+    return JSON.parse(JSON.stringify(point));
+  }
+
+  function lastPoint(rec){
+    const pts = pointsOf(rec);
+    return pts.length ? pts[pts.length - 1] : null;
+  }
+
+  function sameObservation(a, b){
+    if(!a || !b) return false;
+    if(a.point_id && b.point_id && a.point_id === b.point_id) return true;
+    return a.observed_at && b.observed_at && a.observed_at === b.observed_at && a.lat === b.lat && a.lng === b.lng;
+  }
+
+  function validCoordinate(p){
+    return p && Number.isFinite(Number(p.lat)) && Number.isFinite(Number(p.lng)) &&
+      Number(p.lat) >= -90 && Number(p.lat) <= 90 && Number(p.lng) >= -180 && Number(p.lng) <= 180;
+  }
+
+  function addFlag(flags, flag){
+    if(!flags) return [flag];
+    if(!flags.includes(flag)) flags.push(flag);
+    return flags;
+  }
+
+  function applyGeometryMeta(rec){
+    const pts = pointsOf(rec);
+    rec.quality_flags = rec.quality_flags || [];
+    pts.forEach(p => (p.quality_flags || []).forEach(flag => addFlag(rec.quality_flags, flag)));
+    if(rec.kind === "segment"){
+      if(pts.length < 2){
+        rec.geometry_status = "single_point_length_unavailable";
+        rec.length_method = "unavailable_single_point";
+        rec.length_m = null;
+      }else{
+        rec.geometry_status = "line";
+        rec.length_method = "gps_observed_polyline";
+        rec.length_m = polylineLengthMeters(pts);
+      }
+    }else{
+      rec.geometry_status = "point";
+      rec.length_method = "not_applicable";
+      rec.length_m = null;
+    }
+  }
+
+  function addOperationEvent(type, details){
+    const event = Object.assign({
+      event_id:uid("evt"),
+      type,
+      operation_at:nowIso(),
+      patrol_id:activePatrol ? activePatrol.patrol_id : null
+    }, details || {});
+    operationEvents.push(event);
+    if(activePatrol){
+      activePatrol.operation_events = activePatrol.operation_events || [];
+      activePatrol.operation_events.push(event);
+    }
+    if(activeSegment){
+      activeSegment.operation_events = activeSegment.operation_events || [];
+      activeSegment.operation_events.push(event);
+    }
+    safeSetJSON(LS_EVENTS, operationEvents);
+    return event;
+  }
+
+  function updatePatrolUi(){
+    $("#btnStartPatrol").disabled = patrolActive || !!(activeSegment && !patrolActive);
+    $("#btnEndPatrol").disabled = !patrolActive;
+    $("#footStart").textContent = patrolActive ? "終了" : "開始";
+    $("#patrolIdView").textContent = activePatrol && activePatrol.patrol_id ? activePatrol.patrol_id : "開始時に作成";
+    $("#draftActions").classList.toggle("hidden", !(activeSegment && !patrolActive));
+    if(activeSegment){
+      $("#patrolState").textContent = patrolActive ? "パトロール中" : "中断あり";
+      $("#activeState").textContent = activeSegment.eval_code + " " + activeSegment.eval_label + " / " + pointsOf(activeSegment).length + "点";
+    }else{
+      $("#patrolState").textContent = patrolActive ? "パトロール中" : "待機中";
+      $("#activeState").textContent = patrolActive ? "評価未選択・区間記録なし" : "開始後にA/B/Cを選んでください";
+    }
+    updateEvalButtons();
+    renderHistory();
+  }
+
+  function formatDirection(point){
+    if(!point || point.direction_deg == null) return "不明";
+    return point.direction_deg + "度";
+  }
+
+  function filterPeriodLabel(){
+    const fromValue = $("#filterFrom") ? $("#filterFrom").value : "";
+    const toValue = $("#filterTo") ? $("#filterTo").value : "";
+    return (fromValue || "開始指定なし") + " - " + (toValue || "終了指定なし") + "（JST、区間開始時刻基準）";
+  }
+
+  function migrateLegacyRecords(){
+    const legacy = loadJSON(LEGACY_RECORDS, []);
+    if(!Array.isArray(legacy) || legacy.length === 0) return;
+    const existing = new Set(records.map(r => r.id));
+    let added = 0;
+    legacy.forEach(rec => {
+      const converted = legacyToV2(rec);
+      if(!converted || existing.has(converted.id)) return;
+      records.push(converted);
+      existing.add(converted.id);
+      added++;
+    });
+    if(added) safeSetJSON(LS_RECORDS, records);
+    const legacySettings = loadJSON(LEGACY_SETTINGS, {});
+    if(legacySettings && legacySettings.routeName && !settings.routeName){
+      settings.routeName = legacySettings.routeName;
+      safeSetJSON(LS_SETTINGS, settings);
+    }
+  }
+
+  function legacyToV2(rec){
+    if(!rec || !rec.id || !rec.kind) return null;
+    if(rec.schema_version === 2) return rec;
+    const base = Object.assign(baseRecord(rec.kind), {
+      id:rec.id,
+      patrol_id:null,
+      observer_id:null,
+      source_type:"patrol",
+      record_status:"complete",
+      legacy:true,
+      legacy_source_version:"00_00_or_00_01",
+      category:rec.category || "",
+      lane_side:rec.lane_side || "",
+      route_name:rec.route_name || rec.routeName || "",
+      road_section_id:null,
+      memo:rec.memo || "",
+      damage_types:[],
+      safety_concern:"未評価",
+      safety_note:"",
+      traffic_level:"未評価",
+      road_importance_note:"",
+      preventive_candidate:"未評価",
+      preventive_note:"",
+      criteria_version:CRITERIA_VERSION,
+      quality_flags:["legacy"],
+      revision_history:[]
+    });
+    if(rec.kind === "segment"){
+      base.started_at = rec.started_at || rec.startedAt || rec.createdAt || null;
+      base.ended_at = rec.ended_at || rec.endedAt || null;
+      base.eval_code = rec.eval_code || rec.eval || null;
+      base.eval_label = base.eval_code ? evalLabels[base.eval_code] : "";
+      base.original_eval_code = base.eval_code;
+      base.spot_type = null;
+      base.points = (rec.points || []).map((p, index) => legacyPoint(p, rec.id, index));
+    }else if(rec.kind === "spot" || rec.type === "point"){
+      base.kind = "spot";
+      base.created_at = rec.created_at || rec.createdAt || null;
+      base.spot_type = rec.spot_type || rec.category || "旧スポット";
+      base.eval_code = null;
+      base.eval_label = "";
+      base.point = legacyPoint(rec.point || (rec.points && rec.points[0]) || {}, rec.id, 0);
+      base.points = [base.point];
+    }else{
+      return null;
+    }
+    applyGeometryMeta(base);
+    return validateRecord(base).valid ? base : null;
+  }
+
+  function legacyPoint(p, recordId, index){
+    const direction = p && p.direction_deg !== "" && p.direction_deg != null ? Number(p.direction_deg) :
+      p && p.heading !== "" && p.heading != null ? Number(p.heading) : null;
+    return {
+      point_id:(p && p.point_id) || recordId + "_legacy_p" + (index + 1),
+      observed_at:null,
+      received_at:null,
+      lat:Number(p && p.lat),
+      lng:Number(p && p.lng),
+      accuracy_m:p && p.accuracy_m != null ? Number(p.accuracy_m) : p && p.accuracy != null ? Number(p.accuracy) : null,
+      direction_deg:Number.isFinite(direction) ? Math.round(normalizeDeg(direction)) : null,
+      direction_source:"unknown",
+      quality_flags:["legacy"]
+    };
+  }
+
+  function importRecords(imported){
+    const result = {added:0, skipped:0, conflicts:0, errors:0};
+    const byId = new Map(records.map(r => [r.id, r]));
+    imported.forEach(item => {
+      const rec = item && item.schema_version === 2 ? item : legacyToV2(item);
+      const check = validateRecord(rec);
+      if(!check.valid){ result.errors++; return; }
+      if(byId.has(rec.id)){
+        if(JSON.stringify(byId.get(rec.id)) === JSON.stringify(rec)) result.skipped++;
+        else result.conflicts++;
+        return;
+      }
+      records.push(rec);
+      byId.set(rec.id, rec);
+      result.added++;
+    });
+    return result;
+  }
+
+  function validateRecord(rec){
+    if(!rec || !rec.id || !["segment","spot"].includes(rec.kind)) return {valid:false};
+    if(rec.kind === "segment" && !["A","B","C",null].includes(rec.eval_code)) return {valid:false};
+    const pts = pointsOf(rec);
+    if(pts.length === 0) return {valid:false};
+    if(!pts.every(validCoordinate)) return {valid:false};
+    return {valid:true};
+  }
+
+  function openEdit(id){
+    const rec = records.find(r => r.id === id);
+    if(!rec) return;
+    $("#editRecordId").value = rec.id;
+    $("#editEval").value = rec.eval_code || "";
+    $("#editCategory").value = rec.category || "";
+    $("#editRoadSectionId").value = rec.road_section_id || "";
+    $("#editDamageTypes").value = (rec.damage_types || []).join(",");
+    $("#editSafetyConcern").value = rec.safety_concern || "未評価";
+    $("#editTrafficLevel").value = rec.traffic_level || "未評価";
+    $("#editPreventiveCandidate").value = rec.preventive_candidate || "未評価";
+    $("#editMemo").value = rec.memo || "";
+    $("#editSafetyNote").value = rec.safety_note || "";
+    $("#editRoadImportanceNote").value = rec.road_importance_note || "";
+    $("#editPreventiveNote").value = rec.preventive_note || "";
+    $("#editReason").value = "";
+    $("#editPanel").classList.remove("hidden");
+    $("#editPanel").scrollIntoView({behavior:"smooth", block:"center"});
+  }
+
+  function saveEdit(){
+    const id = $("#editRecordId").value;
+    const rec = records.find(r => r.id === id);
+    if(!rec) return;
+    const before = editableSnapshot(rec);
+    const newEval = $("#editEval").value || null;
+    if(rec.kind === "segment" && newEval){
+      rec.eval_code = newEval;
+      rec.eval_label = evalLabels[newEval];
+    }
+    rec.category = $("#editCategory").value;
+    rec.road_section_id = $("#editRoadSectionId").value || null;
+    rec.damage_types = $("#editDamageTypes").value.split(",").map(x => x.trim()).filter(Boolean);
+    rec.safety_concern = $("#editSafetyConcern").value || "未評価";
+    rec.traffic_level = $("#editTrafficLevel").value || "未評価";
+    rec.preventive_candidate = $("#editPreventiveCandidate").value || "未評価";
+    rec.memo = $("#editMemo").value;
+    rec.safety_note = $("#editSafetyNote").value;
+    rec.road_importance_note = $("#editRoadImportanceNote").value;
+    rec.preventive_note = $("#editPreventiveNote").value;
+    const after = editableSnapshot(rec);
+    rec.revision_history = rec.revision_history || [];
+    rec.revision_history.push({edited_at:nowIso(), reason:$("#editReason").value.trim() || null, before, after});
+    persistRecords();
+    $("#editPanel").classList.add("hidden");
+    message("修正を保存しました。", "good");
+  }
+
+  function editableSnapshot(rec){
+    return {
+      eval_code:rec.eval_code || null,
+      category:rec.category || "",
+      road_section_id:rec.road_section_id || null,
+      memo:rec.memo || "",
+      damage_types:rec.damage_types || [],
+      safety_concern:rec.safety_concern || "未評価",
+      traffic_level:rec.traffic_level || "未評価",
+      preventive_candidate:rec.preventive_candidate || "未評価",
+      safety_note:rec.safety_note || "",
+      road_importance_note:rec.road_importance_note || "",
+      preventive_note:rec.preventive_note || ""
+    };
+  }
+
+  function initMap(){
+    if(map || typeof L === "undefined") return;
+    map = L.map("map").setView([35.68,139.76], 13);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom:19,
+      attribution:"&copy; OpenStreetMap contributors"
+    }).addTo(map);
+    layerGroup = L.layerGroup().addTo(map);
+  }
+
+  function refreshMap(){
+    if(typeof L === "undefined"){
+      $("#map").innerHTML = "<div style='padding:12px'>地図を読み込めませんでした。CSV/GeoJSON出力は利用できます。</div>";
+      return;
+    }
+    initMap();
+    layerGroup.clearLayers();
+    const bounds = [];
+    filteredRecords().forEach(rec => {
+      const pts = pointsOf(rec);
+      if(rec.kind === "segment" && pts.length > 1){
+        const latlngs = pts.map(p => [p.lat, p.lng]);
+        if(latlngs.length > 1){
+          L.polyline(latlngs, {color:colorFor(rec.eval_code), weight:6, opacity:.82}).addTo(layerGroup);
+          addArrow(representativePoint(pts), rec.eval_code, popupText(rec));
+          latlngs.forEach(ll => bounds.push(ll));
+        }
+      }else if(pts[0]){
+        addArrow(pts[0], rec.kind === "segment" ? rec.eval_code : "S", popupText(rec));
+        bounds.push([pts[0].lat, pts[0].lng]);
+      }
+    });
+    if(currentCandidate){
+      addArrow(currentCandidate, "S", "現在地");
+      bounds.push([currentCandidate.lat,currentCandidate.lng]);
+    }
+    setTimeout(() => map.invalidateSize(), 100);
+    if(bounds.length) map.fitBounds(bounds, {padding:[28,28], maxZoom:17});
+  }
+
+  function addArrow(point, evalCode, popup){
+    if(!point) return;
+    const color = colorFor(evalCode);
+    if(point.direction_deg == null){
+      L.circleMarker([point.lat, point.lng], {radius:7, color, fillColor:color, fillOpacity:.8, weight:1})
+        .addTo(layerGroup).bindPopup(popup + "<br>方位不明");
+      return;
+    }
+    const deg = Number(point.direction_deg);
+    const html = "<div class='arrowMarker' style='--arrow-color:" + color + ";transform:rotate(" + deg + "deg)'></div>";
+    L.marker([point.lat, point.lng], {
+      icon:L.divIcon({className:"", html, iconSize:[22,22], iconAnchor:[11,11]})
+    }).addTo(layerGroup).bindPopup(popup);
+  }
+
+  function popupText(rec){
+    if(typeof rec === "string") return rec;
+    if(rec.kind === "segment") return rec.eval_code + " " + rec.eval_label + "<br>" + escapeHtml(rec.category || "") + "<br>" + escapeHtml(fmtDate(rec.started_at));
+    return escapeHtml(rec.spot_type) + "<br>" + escapeHtml(rec.category || "") + "<br>" + escapeHtml(fmtDate(rec.created_at));
+  }
+
+  function updateEvalButtons(){
+    $$(".evalBtn").forEach(btn => btn.classList.toggle("active", activeSegment && activeSegment.eval_code === btn.dataset.eval));
+  }
+
+  function showTab(id){
+    $$(".tab").forEach(tab => tab.classList.remove("active"));
+    $$(".tabBtn").forEach(btn => btn.classList.toggle("active", btn.dataset.tab === id));
+    $("#" + id).classList.add("active");
+    if(id === "history") setTimeout(refreshMap, 100);
+  }
+
+  function representativePoint(points){
+    if(!points || points.length === 0) return null;
+    return points[Math.floor(points.length / 2)];
+  }
+
+  function polylineLengthMeters(points){
+    if(!points || points.length < 2) return null;
+    let total = 0;
+    for(let i = 1; i < points.length; i++){
+      total += distanceMeters(points[i - 1], points[i]);
+    }
+    return total;
+  }
+
+  function bearing(a, b){
+    const lat1 = toRad(a.lat);
+    const lat2 = toRad(b.lat);
+    const dLng = toRad(b.lng - a.lng);
+    const y = Math.sin(dLng) * Math.cos(lat2);
+    const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+    return normalizeDeg(toDeg(Math.atan2(y, x)));
+  }
+
+  function distanceMeters(a, b){
+    const r = 6371000;
+    const dLat = toRad(b.lat - a.lat);
+    const dLng = toRad(b.lng - a.lng);
+    const lat1 = toRad(a.lat);
+    const lat2 = toRad(b.lat);
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+    return 2 * r * Math.asin(Math.sqrt(h));
+  }
+
+  function normalizeDeg(deg){
+    return ((deg % 360) + 360) % 360;
+  }
+
+  function toRad(deg){ return deg * Math.PI / 180; }
+  function toDeg(rad){ return rad * 180 / Math.PI; }
+
+  function colorFor(evalCode){
+    if(evalCode === "A") return "#15803d";
+    if(evalCode === "B") return "#b45309";
+    if(evalCode === "C") return "#b91c1c";
+    return "#155e75";
+  }
+
+  function csvEscape(value){
+    const s = value == null ? "" : String(value);
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+
+  function escapeHtml(s){
+    return String(s == null ? "" : s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));
+  }
+
+  function fileName(prefix, ext){
+    const d = new Date();
+    const pad = n => String(n).padStart(2, "0");
+    return prefix + "_" + d.getFullYear() + pad(d.getMonth()+1) + pad(d.getDate()) + "_" + pad(d.getHours()) + pad(d.getMinutes()) + "." + ext;
+  }
+
+  function downloadText(text, filename, type){
+    const blob = new Blob([text], {type:type + ";charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function bind(){
+    $$(".tabBtn").forEach(btn => btn.addEventListener("click", () => showTab(btn.dataset.tab)));
+    $$(".quickFilter").forEach(btn => btn.addEventListener("click", () => applyQuickFilter(btn.dataset.range)));
+    ["#filterFrom","#filterTo","#filterPatrolId","#filterObserverId","#filterEval","#filterSpot"].forEach(sel => {
+      $(sel).addEventListener("change", () => { renderHistory(); refreshMap(); });
+      if($(sel).tagName === "INPUT") $(sel).addEventListener("input", () => { renderHistory(); refreshMap(); });
+    });
+    $("#btnStartPatrol").addEventListener("click", startPatrol);
+    $("#btnEndPatrol").addEventListener("click", endPatrol);
+    $("#btnResumeDraft").addEventListener("click", resumeDraft);
+    $("#btnCloseDraft").addEventListener("click", closeDraft);
+    $("#footStart").addEventListener("click", () => patrolActive ? endPatrol() : startPatrol());
+    $$(".evalBtn").forEach(btn => btn.addEventListener("click", () => switchEval(btn.dataset.eval)));
+    $("#btnSplitSame").addEventListener("click", splitSameEval);
+    $("#footA").addEventListener("click", () => switchEval("A"));
+    $("#footB").addEventListener("click", () => switchEval("B"));
+    $("#footC").addEventListener("click", () => switchEval("C"));
+    $$(".spotBtn").forEach(btn => btn.addEventListener("click", () => addSpot(btn.dataset.spot)));
+    $("#btnRefreshMap").addEventListener("click", refreshMap);
+    $("#btnExportLegacyCsv").addEventListener("click", exportLegacyCSV);
+    $("#btnExportSummaryCsv").addEventListener("click", exportSummaryCSV);
+    $("#btnExportPointCsv").addEventListener("click", exportPointCSV);
+    $("#btnExportGeo").addEventListener("click", exportGeoJSON);
+    $("#btnExportViewer").addEventListener("click", exportViewerHTML);
+    $("#btnBackup").addEventListener("click", backupJSON);
+    $("#btnImport").addEventListener("click", () => $("#importFile").click());
+    $("#importFile").addEventListener("change", e => importJSON(e.target.files[0]));
+    $("#btnDeleteLast").addEventListener("click", deleteLast);
+    $("#btnDeleteAll").addEventListener("click", deleteAll);
+    $("#btnSaveEdit").addEventListener("click", saveEdit);
+    $("#btnCancelEdit").addEventListener("click", () => $("#editPanel").classList.add("hidden"));
+    ["#routeName","#observerId","#pointIntervalSec","#pointDistanceM","#stalePositionSec","#lowAccuracyM"].forEach(sel => $(sel).addEventListener("change", saveSettings));
+  }
+
+  bind();
+  applySettings();
+  initFilters();
+  updatePatrolUi();
+  setSaveState(lastSaveOk ? "保存状態: 読み込み済み" : "保存状態: 未確認", lastSaveOk ? "good" : "");
+  window.RoadPatrolDebug = {
+    injectPosition({lat, lng, accuracy=8, heading=null, timestamp=Date.now(), receivedAt=null}){
+      onPosition({timestamp, receivedAt:receivedAt || nowIso(), coords:{latitude:lat, longitude:lng, accuracy, heading}});
+    },
+    startPatrol,
+    endPatrol,
+    switchEval,
+    splitSameEval,
+    addSpot,
+    failNextSave(){ forceNextSaveFailure = true; },
+    state(){ return {records, activePatrol, activeSegment, operationEvents, settings}; },
+    clearV2(){
+      records = [];
+      operationEvents = [];
+      activePatrol = null;
+      activeSegment = null;
+      patrolActive = false;
+      safeSetJSON(LS_RECORDS, records);
+      safeSetJSON(LS_EVENTS, operationEvents);
+      safeSetJSON(LS_DRAFT, null);
+      updatePatrolUi();
+    },
+    exports:{toGeoJSON, filteredRecords}
+  };
+})();
+</script>
+</body>
+</html>
