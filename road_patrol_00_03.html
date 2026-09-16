@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#173e3c">
+<title>道路パトロール 00_03</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<style>
+:root{--bg:#f3f5f3;--paper:#fff;--text:#203532;--muted:#5a6e69;--line:#dce5df;--main:#173e3c;--green:#176440;--amber:#8a5509;--red:#ac303b;--a:#e5f2e9;--b:#fff2d8;--c:#fce8e9}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif;line-height:1.55}button,input,select{font:inherit}button{cursor:pointer;border:1px solid var(--line);border-radius:12px;min-height:48px;padding:12px 16px;background:var(--paper);color:var(--text);font-weight:700;touch-action:manipulation}button:disabled{cursor:default;opacity:.43}button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #237fbe;outline-offset:3px}button:active:not(:disabled){transform:translateY(1px)}.primary{background:var(--main);border-color:var(--main);color:#fff}.hidden,[hidden]{display:none!important}header{padding:calc(14px + env(safe-area-inset-top)) 16px 12px;background:var(--main);color:white}header .inner{max-width:760px;margin:auto;display:flex;justify-content:space-between;align-items:center;gap:12px}h1{font-size:18px;margin:0;letter-spacing:.02em}.version{font-size:11px;opacity:.65}.gps{font-size:12px;white-space:nowrap;padding:5px 9px;background:#ffffff18;border-radius:20px}.gps.bad{background:#ffe3ad;color:#623b00}main{max-width:792px;margin:auto;padding:12px 16px calc(24px + env(safe-area-inset-bottom))}.tabs{display:grid;grid-template-columns:repeat(3,1fr);padding:4px;background:#e7ede8;border-radius:14px;gap:4px;margin-bottom:14px}.tabBtn{background:transparent;border:0;min-height:43px;padding:8px}.tabBtn[aria-selected="true"]{background:white;box-shadow:0 2px 5px #2035320b}.tab{display:none}.tab.active{display:block}.panel{background:white;border:1px solid var(--line);border-radius:18px;padding:18px;margin:12px 0}.panel h2{font-size:16px;margin:0 0 6px}.sub,.hint{font-size:12px;color:var(--muted);margin:5px 0 0}.statusTop{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;color:var(--muted)}#saveState.bad{color:var(--red);font-weight:800}#activeState{font-size:27px;line-height:1.3;font-weight:800;margin:9px 0 6px}.live{border-top:4px solid var(--main)}.live[data-eval="A"]{border-top-color:var(--green)}.live[data-eval="B"]{border-top-color:var(--amber)}.live[data-eval="C"]{border-top-color:var(--red)}.actions{display:flex;gap:8px;margin-top:14px}.actions>*{flex:1}.evalGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:14px 0 12px}.evalBtn{padding:13px 3px;min-height:106px;display:flex;align-items:center;flex-direction:column;justify-content:center;gap:3px;border:2px solid transparent;position:relative}.evalBtn strong{font-size:35px;line-height:1.1}.evalBtn span{font-size:15px;white-space:nowrap}.evalBtn[data-eval="A"]{color:var(--green);background:var(--a)}.evalBtn[data-eval="B"]{color:var(--amber);background:var(--b)}.evalBtn[data-eval="C"]{color:var(--red);background:var(--c)}.evalBtn[aria-pressed="true"]{border-color:currentColor;box-shadow:0 0 0 2px white inset}.evalBtn[aria-pressed="true"]::after{content:'記録中';font-size:10px;position:absolute;top:-9px;background:var(--main);color:#fff;border-radius:6px;padding:0 5px}.criteria{font-size:12px;color:var(--muted)}.criteria summary{cursor:pointer;padding:4px 0}.criteria p{margin:8px 0}.spotGrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:12px 0}.spotBtn{min-height:65px;background:#f8faf8;font-size:16px;padding:10px 4px}.spotBtn span{display:block;font-size:12px}.notice{font-size:13px;border-radius:12px;background:#e6eee9;color:var(--main);padding:12px 14px;margin:10px 0}.notice:empty{display:none}.notice.bad{background:#fff0dc;color:#713e00;border:1px solid #e2bb79}.toast{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;margin-top:10px}.toast button{padding:5px 12px;min-height:38px;color:var(--red)}#map{height:350px;background:#eef1ee;border-radius:12px;margin-top:12px;display:block}.mapFallback{padding:22px 14px;font-size:13px;color:var(--muted)}.filterGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}label{display:block;font-size:12px;font-weight:700;margin-bottom:4px}input,select{min-width:0;width:100%;padding:10px 8px;border:1px solid var(--line);border-radius:9px;background:white;color:var(--text);min-height:44px}.quick{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}.quick button{font-size:12px;min-height:36px;padding:6px 10px}.stats{display:flex;gap:8px;flex-wrap:wrap;font-size:12px;margin:12px 0}.stats span{padding:7px 9px;background:#f1f5f1;border-radius:8px}.entry{border-top:1px solid var(--line);padding:12px 0;font-size:14px;display:flex;gap:10px;align-items:flex-start}.badge{min-width:29px;height:29px;display:inline-grid;place-items:center;border-radius:8px;font-weight:800;background:#e8eee9;color:var(--main)}.badge.A{background:var(--a);color:var(--green)}.badge.B{background:var(--b);color:var(--amber)}.badge.C{background:var(--c);color:var(--red)}.entry p{font-size:12px;color:var(--muted);margin:3px 0}.outputGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.outputGrid button{min-height:66px;font-size:16px}.outputGrid small{display:block;font-size:11px;font-weight:400;margin-top:3px}.exportCount{font-size:21px;font-weight:800;margin-top:12px}.backupNote{font-size:12px;color:var(--muted);margin-top:12px}.legend{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;margin-top:12px}.arrow{font-size:24px;line-height:24px;text-align:center;transform-origin:center}.testBanner{background:#fff0dc;color:#713e00;text-align:center;font-size:13px;padding:8px}.pending{color:var(--amber)}
+@media(max-width:420px){main{padding:10px 12px 24px}.panel{padding:15px;border-radius:15px}.evalGrid{gap:7px}.evalBtn{min-height:99px}.evalBtn span{font-size:14px}.outputGrid{grid-template-columns:1fr}#activeState{font-size:25px}#map{height:280px}.spotBtn{font-size:15px}}
+@media(prefers-reduced-motion:reduce){button:active:not(:disabled){transform:none}}
+</style>
+</head>
+<body>
+<header><div class="inner"><div><h1>道路パトロール</h1><div class="version">00_03</div></div><span id="gpsState" class="gps">GPS待機中</span></div></header>
+<div id="sampleBanner" class="testBanner" hidden>架空サンプルを含みます。実測データではありません。</div>
+<main>
+<nav class="tabs" role="tablist" aria-label="画面切替">
+<button id="tab-record" class="tabBtn" data-tab="record" role="tab" aria-controls="record" aria-selected="true">巡回</button>
+<button id="tab-history" class="tabBtn" data-tab="history" role="tab" aria-controls="history" aria-selected="false">記録を見る</button>
+<button id="tab-manage" class="tabBtn" data-tab="manage" role="tab" aria-controls="manage" aria-selected="false">出力</button>
+</nav>
+<div id="message" class="notice" role="status" aria-live="polite"></div>
+<section id="record" class="tab active" role="tabpanel" aria-labelledby="tab-record">
+<div id="livePanel" class="panel live">
+<div class="statusTop"><span id="patrolState">準備できました</span><span id="saveState" role="status">読み込み中</span></div>
+<div id="activeState" aria-live="polite">巡回を始めましょう</div>
+<div id="recordHint" class="hint">開始したら、今の道路の状態を選んでください。</div>
+<div class="actions"><button id="btnStart" class="primary" disabled>巡回開始</button><button id="btnEnd" hidden>巡回終了</button></div>
+<div id="draftActions" class="actions" hidden><button id="btnResume" class="primary">巡回を再開</button><button id="btnClose">ここまで保存して終了</button></div>
+</div>
+<div class="panel">
+<h2>道路の状態</h2>
+<p class="sub">最初に今の状態を選び、あとは変わったときだけ。</p>
+<div class="evalGrid">
+<button class="evalBtn" data-eval="A" aria-pressed="false" disabled><strong>A</strong><span>良好</span></button>
+<button class="evalBtn" data-eval="B" aria-pressed="false" disabled><strong>B</strong><span>傷みあり</span></button>
+<button class="evalBtn" data-eval="C" aria-pressed="false" disabled><strong>C</strong><span>傷み大</span></button>
+</div>
+<details class="criteria"><summary>A・B・Cの目安</summary><p><b>A 良好</b>　通常巡回で問題なし。</p><p><b>B 傷みあり</b>　路面の一部に傷みが見られる。</p><p><b>C 傷み大</b>　傷みが目立つ、または続いている。</p></details>
+</div>
+<div class="panel">
+<h2>気になる場所</h2><p class="sub">見つけたら押すだけ。場所と時刻を記録します。</p>
+<div class="spotGrid">
+<button class="spotBtn" data-spot="water_pooling" disabled>水たまり</button>
+<button class="spotBtn" data-spot="level_difference" disabled>段差</button>
+<button class="spotBtn" data-spot="roadside_sidewalk_anomaly" disabled>路肩・歩道異常</button>
+<button class="spotBtn" data-spot="other" disabled>その他</button>
+</div>
+<p class="hint">路肩・歩道異常には、側溝・縁石など道路の端の異常も含みます。</p>
+<div id="spotToast" class="toast" hidden><span id="spotMessage" role="status"></span><button id="btnUndo">取消</button></div>
+</div>
+</section>
+<section id="history" class="tab" role="tabpanel" aria-labelledby="tab-history">
+<div class="panel"><h2>地図で確認</h2><div class="legend"><span>A 良好　B 傷みあり　C 傷み大</span><span>過去分は当時の評価</span></div><div id="map"><div class="mapFallback">地図を準備しています。</div></div></div>
+<div class="panel"><h2>表示する記録</h2><div class="filterGrid">
+<div><label for="filterFrom">開始日</label><input id="filterFrom" type="date"></div><div><label for="filterTo">終了日</label><input id="filterTo" type="date"></div>
+<div><label for="filterEval">道路の状態</label><select id="filterEval"><option value="">すべて</option><option>A</option><option>B</option><option>C</option><option value="spot">気になる場所のみ</option></select></div>
+<div><label for="filterSpot">気になる場所</label><select id="filterSpot"><option value="">すべて</option></select></div></div>
+<div class="quick"><button data-range="today">今日</button><button data-range="7days">直近7日</button><button data-range="all">全件</button></div>
+<div id="stats" class="stats"></div><p class="hint">観測延長は再走行分を含みます。日時は日本時間、日付の抽出は記録の開始時刻が基準です。</p></div>
+<div class="panel"><h2>観測した記録</h2><div id="recordList"></div></div>
+</section>
+<section id="manage" class="tab" role="tabpanel" aria-labelledby="tab-manage">
+<div class="panel"><h2>データを出力</h2><div id="exportCount" class="exportCount">出力対象：全0件</div><p id="exportHint" class="hint">記録を見る画面の絞り込みに関係なく、保存を終えた全記録を出力します。</p><p id="draftHint" class="hint"></p>
+<div class="outputGrid"><button id="btnExportGeo" class="primary" disabled>データを出力<small>地図・解析用（GeoJSON）</small></button><button id="btnExportCSV" disabled>一覧CSV<small>Excelで内容を確認</small></button></div></div>
+<div class="panel"><h2>データの保管</h2><div class="outputGrid"><button id="btnBackup" disabled>バックアップを保存</button><button id="btnImport" disabled>バックアップを復元</button></div><input id="importFile" type="file" accept=".json,application/json" hidden><p class="backupNote">バックアップは中断中の記録や取り込んだ原本も含みます。保管・端末間の移行用です。受け渡しには上のデータ出力をお使いください。</p><p class="hint">復元できるのはバックアップJSONです。CSVはそのまま復元できません。</p></div>
+</section>
+</main>
+<script>
+(()=>{
+'use strict';
+const APP_VERSION='00_03', SCHEMA_VERSION=3, CRITERIA_VERSION='ABC-00_03';
+const CONFIG=Object.freeze({point_interval_ms:3000,point_distance_m:3,stale_position_ms:10000,low_accuracy_m:30});
+const LABELS={A:'良好',B:'傷みあり',C:'傷み大'}, OLD_LABELS={A:'良好',B:'注意',C:'要対応'};
+const SPOTS={water_pooling:'水たまり',level_difference:'段差',roadside_sidewalk_anomaly:'路肩・歩道異常',other:'その他'};
+const DB_NAME='road_patrol_00_03', FALLBACK_KEY='road_patrol_snapshot_00_03';
+const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
+const clone=v=>JSON.parse(JSON.stringify(v));
+const uid=prefix=>prefix+'_'+(globalThis.crypto?.randomUUID?.() || Date.now().toString(36)+'_'+Math.random().toString(36).slice(2));
+const iso=()=>new Date().toISOString();
+let state=emptyState(), active=false, ready=false, db=null, fallback=false, readBlocked=false;
+let current=null, previous=null, lastReceived=null, gapPending=false, watchId=null, generation=0;
+let revision=0, savedRevision=0, saveRunning=false, saveFailed=false, storageError='', lastSpotId=null;
+let map=null, mapLayer=null, mapUnavailable=false, range='7days';
+function emptyState(){return {app:'road_patrol',schema_version:3,app_version:APP_VERSION,records:[],draft:null,operation_events:[],source_archives:[],import_reports:[]};}
+function segment(){return state.draft?.active_segment || null;}
+function message(text,bad=false){$('#message').textContent=text;$('#message').classList.toggle('bad',bad);}
+function number(v){return v==null || v==='' || typeof v==='boolean' ? null : Number.isFinite(Number(v))?Number(v):null;}
+function validTime(v){return typeof v==='string' && v.trim()!=='' && Number.isFinite(Date.parse(v));}
+function time(v){return validTime(v)?new Date(v).toISOString():null;}
+function coord(p){return p && number(p.lat)!==null && number(p.lng)!==null && Math.abs(Number(p.lat))<=90 && Math.abs(Number(p.lng))<=180;}
+function flags(v){return Array.isArray(v)?[...new Set(v.filter(x=>typeof x==='string'))]:[];}
+function addFlag(a,f){if(!a.includes(f))a.push(f);}
+function points(r){return r.kind==='segment'?(r.points||[]):r.point?[r.point]:[];}
+function startTime(r){return r.kind==='segment'?r.started_at:r.created_at;}
+function angle(d){return ((d%360)+360)%360;}
+function distance(a,b){const rad=x=>x*Math.PI/180, h=Math.sin(rad(b.lat-a.lat)/2)**2+Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(rad(b.lng-a.lng)/2)**2;return 12742000*Math.asin(Math.sqrt(Math.min(1,Math.max(0,h))));}
+function bearing(a,b){const r=x=>x*Math.PI/180, dl=r(b.lng-a.lng),y=Math.sin(dl)*Math.cos(r(b.lat)),x=Math.cos(r(a.lat))*Math.sin(r(b.lat))-Math.sin(r(a.lat))*Math.cos(r(b.lat))*Math.cos(dl);return Math.round(angle(Math.atan2(y,x)*180/Math.PI))%360;}
+function geometryMeta(r){const ps=points(r);r.quality_flags=flags(r.quality_flags);ps.forEach(p=>flags(p.quality_flags).forEach(f=>addFlag(r.quality_flags,f)));if(r.kind==='spot'){r.length_m=null;r.geometry_status='point';r.length_method='not_applicable';}else if(ps.length<2){r.length_m=null;r.geometry_status='single_point_length_unavailable';r.length_method='unavailable_single_point';}else{r.length_m=ps.slice(1).reduce((n,p,i)=>n+distance(ps[i],p),0);r.geometry_status='line';r.length_method='gps_observed_polyline';}return r;}
+function fmt(t){return validTime(t)?new Date(t).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo',hour12:false}):'日時不明';}
+function jstDate(d=new Date()){return new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).format(d);}
+function event(type,details={}){state.operation_events.push({event_id:uid('evt'),type,operation_at:iso(),patrol_id:state.draft?.patrol_id||null,...details});}
+function base(kind){return {id:uid(kind==='segment'?'seg':'spot'),kind,patrol_id:state.draft.patrol_id,schema_version:3,app_version:APP_VERSION,criteria_version:CRITERIA_VERSION,legacy:false,record_status:'complete',quality_flags:[],sample:state.draft.sample===true};}
+
+// One transaction holds records, draft, events, and imported originals together.
+async function openStorage(){
+  try{db=await new Promise((resolve,reject)=>{if(!globalThis.indexedDB)return reject(new Error('unavailable'));const q=indexedDB.open(DB_NAME,1);q.onupgradeneeded=()=>q.result.createObjectStore('data');q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error);q.onblocked=()=>reject(new Error('blocked'));});}
+  catch(e){fallback=true;}
+}
+async function readStorage(){
+  if(fallback){const raw=localStorage.getItem(FALLBACK_KEY);return raw?JSON.parse(raw):null;}
+  return new Promise((resolve,reject)=>{const tx=db.transaction('data','readonly'),q=tx.objectStore('data').get('snapshot');q.onsuccess=()=>resolve(q.result||null);q.onerror=()=>reject(q.error);});
+}
+async function writeStorage(snapshot){
+  if(fallback){localStorage.setItem(FALLBACK_KEY,JSON.stringify(snapshot));return;}
+  await new Promise((resolve,reject)=>{const tx=db.transaction('data','readwrite');tx.objectStore('data').put(snapshot,'snapshot');tx.oncomplete=()=>resolve();tx.onabort=()=>reject(tx.error||new Error('aborted'));tx.onerror=()=>reject(tx.error);});
+}
+function persist(){revision++;saveFailed=false;updateSave();void flush();}
+async function flush(){
+  if(saveRunning||readBlocked)return;
+  saveRunning=true;
+  while(savedRevision<revision){const rev=revision;try{await writeStorage(clone(state));savedRevision=rev;saveFailed=false;}catch(e){saveFailed=true;storageError=String(e?.message||e);message('保存できません。出力画面からバックアップを保存してください。',true);break;}}
+  saveRunning=false;updateSave();
+}
+function updateSave(){const bad=saveFailed||readBlocked;$('#saveState').textContent=bad?'保存できていません':savedRevision<revision?'保存中…':'保存済み';$('#saveState').classList.toggle('bad',bad);}
+
+// Preserve pre-00_03 originals in backups; public exports use a strict field list.
+function normalizePoint(p,id,index,old){
+  if(!coord(p))throw new Error('緯度経度が不正です');
+  const a=number(p.accuracy_m??p.accuracy),d=number(p.direction_deg??p.heading);
+  const q={point_id:typeof p.point_id==='string'&&p.point_id?p.point_id:id+'_p'+(index+1),lat:Number(p.lat),lng:Number(p.lng),observed_at:time(p.observed_at),received_at:time(p.received_at),accuracy_m:a!=null&&a>=0?a:null,direction_deg:d==null?null:Math.round(angle(d))%360,direction_source:['gps','computed','unknown'].includes(p.direction_source)?p.direction_source:'unknown',quality_flags:flags(p.quality_flags)};
+  if(old)addFlag(q.quality_flags,'legacy');return q;
+}
+function normalizeRecord(input,sourceVersion=null){
+  if(!input||typeof input.id!=='string'||!input.id.trim())throw new Error('記録IDがありません');
+  if(number(input.schema_version)>SCHEMA_VERSION)throw new Error('この版では読み込めないデータ形式です');
+  if(!['segment','spot'].includes(input.kind))throw new Error('記録の種類が不正です');
+  const r=clone(input),old=r.schema_version!==3||r.legacy===true;
+  const early=r.schema_version!==3&&(r.schema_version!==2||r.legacy===true||flags(r.quality_flags).includes('legacy'));
+  const ps=r.kind==='segment'?r.points:(r.point?[r.point]:r.points);
+  if(!Array.isArray(ps)||!ps.length)throw new Error('位置がありません');
+  const normalized=ps.map((p,i)=>normalizePoint(p,r.id,i,old));
+  r.patrol_id=typeof r.patrol_id==='string'&&r.patrol_id?r.patrol_id:null;
+  r.legacy=old;r.quality_flags=flags(r.quality_flags);if(old)addFlag(r.quality_flags,'legacy');
+  r.source_schema_version=r.source_schema_version??r.schema_version??null;
+  r.schema_version=3;
+  if(early){r.criteria_version='legacy-ABC-00_01';r.eval_label=OLD_LABELS[r.eval_code||r.eval]||r.eval_label||null;r.app_version=typeof input.legacy_source_version==='string'?input.legacy_source_version:(input.schema_version===2?'00_00_or_00_01':sourceVersion||'00_00_or_00_01');}
+  else if(old){r.criteria_version=input.criteria_version||'ABC-00_02';r.app_version=input.app_version||sourceVersion||'unknown';}
+  else {r.criteria_version=input.criteria_version||CRITERIA_VERSION;r.app_version=input.app_version||APP_VERSION;}
+  if(r.kind==='segment'){
+    r.eval_code=r.eval_code||r.eval||null;if(!['A','B','C'].includes(r.eval_code))throw new Error('評価が不正です');
+    r.eval_label=r.eval_label||(old?OLD_LABELS:LABELS)[r.eval_code];r.started_at=time(r.started_at||r.startedAt||r.createdAt);r.ended_at=time(r.ended_at||r.endedAt);r.points=normalized;
+    if(!r.started_at||(!r.ended_at&&r.record_status!=='recording'))addFlag(r.quality_flags,'time_unknown');
+  }else{
+    r.created_at=time(r.created_at||r.createdAt);r.point=normalized[0];r.eval_code=null;r.eval_label=null;
+    if(old){r.spot_code=r.spot_code||null;r.spot_label=r.spot_label||r.spot_type||null;}
+    else if(!Object.hasOwn(SPOTS,r.spot_code))throw new Error('場所の分類が不正です');
+    else r.spot_label=SPOTS[r.spot_code];
+    if(!r.created_at)addFlag(r.quality_flags,'time_unknown');
+  }
+  if(!['complete','interrupted','recording'].includes(r.record_status))r.record_status='complete';
+  r.sample=r.sample===true;return geometryMeta(r);
+}
+function canonical(v){if(Array.isArray(v))return '['+v.map(canonical).join(',')+']';if(v&&typeof v==='object')return '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canonical(v[k])).join(',')+'}';return JSON.stringify(v);}
+function sameRecord(a,b){return canonical(a)===canonical(b);}
+function archive(name,data){const key=canonical(data);if(!state.source_archives.some(s=>canonical(s.data)===key))state.source_archives.push({name,imported_at:iso(),data:clone(data)});}
+function importPayload(payload,name='backup.json',includeDraft=true){
+  if(!payload||(!Array.isArray(payload)&&!Array.isArray(payload.records)))throw new Error('バックアップJSONではありません');
+  const list=Array.isArray(payload)?payload:payload.records;
+  const report={source:name,at:iso(),added:0,skipped:0,conflicts:0,errors:0,draft:'none',details:[]};
+  // Pre-00_03 files are archived whole, including settings and hidden legacy fields.
+  if(payload.schema_version!==3)archive(name,payload);
+  else{
+    for(const a of payload.source_archives||[])if(a&&a.data)archive(a.name||name,a.data);
+    const known=new Set(state.operation_events.map(e=>e.event_id));
+    for(const e of payload.operation_events||[])if(e&&typeof e.event_id==='string'&&!known.has(e.event_id)){state.operation_events.push(clone(e));known.add(e.event_id);}
+  }
+  const byId=new Map(state.records.map(r=>[r.id,r]));
+  for(const input of list){try{const r=normalizeRecord(input,payload.app_version||payload.version||null);if(r.record_status==='recording')throw new Error('未完了記録はdraftで復元してください');if(byId.has(r.id)){if(sameRecord(byId.get(r.id),r))report.skipped++;else{report.conflicts++;report.details.push({id:r.id,reason:'同じIDに異なる内容'});archive(name,payload);}}else{state.records.push(r);byId.set(r.id,r);report.added++;}}catch(e){report.errors++;report.details.push({id:input?.id||null,reason:e.message});archive(name,payload);}}
+  if(includeDraft&&payload.draft){
+    try{
+      const d=clone(payload.draft);if(typeof d.patrol_id!=='string'||!d.patrol_id)throw new Error('中断巡回のIDが不正です');
+      d.active_segment=d.active_segment?normalizeRecord({...d.active_segment,record_status:'recording'},payload.app_version):null;
+      if(d.active_segment)d.active_segment.record_status='recording';
+      if(active||state.draft){report.draft='conflict';archive(name,payload);report.details.push({id:d.patrol_id,reason:'現在の巡回を優先し、中断データは原本として保管'});}
+      else if(d.active_segment&&byId.has(d.active_segment.id)){report.draft='already_closed';}
+      else{state.draft=d;report.draft='restored';}
+    }catch(e){report.errors++;report.details.push({id:null,reason:e.message});archive(name,payload);}
+  }
+  state.import_reports.push(report);return report;
+}
+function importDescription(r){return `追加${r.added}件・取込済み${r.skipped}件・競合${r.conflicts}件・不正${r.errors}件`+(r.draft==='restored'?'／中断中の記録も復元しました':r.draft==='conflict'?'／中断データは原本に保管しました':'');}
+function migrateLocal(){
+  const reports=[];
+  // Only once per new storage. Older keys remain untouched.
+  if(state.migration_checked)return reports;
+  for(const [key,version] of [['road_patrol_records_00_00','00_00_or_00_01'],['road_patrol_records_v2','00_02']]){
+    const raw=localStorage.getItem(key);if(!raw)continue;
+    try{const data=JSON.parse(raw);if(Array.isArray(data)&&data.length)reports.push(importPayload({version,records:data},key,false));}
+    catch(e){archive(key,{unparsed:raw});reports.push({added:0,skipped:0,conflicts:0,errors:1,draft:'none'});}
+  }
+  const draftRaw=localStorage.getItem('road_patrol_draft_v2');
+  if(draftRaw){try{reports.push(importPayload({version:'00_02',records:[],draft:JSON.parse(draftRaw)},'road_patrol_draft_v2'));}catch(e){archive('road_patrol_draft_v2',{unparsed:draftRaw});}}
+  for(const key of ['road_patrol_settings_00_00','road_patrol_settings_v2','road_patrol_events_v2']){const raw=localStorage.getItem(key);if(raw){try{archive(key,JSON.parse(raw));}catch(e){archive(key,{unparsed:raw});}}}
+  state.migration_checked=true;return reports;
+}
+
+function freshPoint(){if(!current||!coord(current)||!validTime(current.observed_at))return null;const age=Date.now()-Date.parse(current.observed_at);return age>=-1000&&age<=CONFIG.stale_position_ms?clone(current):null;}
+function requirePoint(){const p=freshPoint();if(!p)message('現在地を取得しています。GPSが戻ってから押してください。',true);return p;}
+function setGPS(text,bad=false){$('#gpsState').textContent=text;$('#gpsState').classList.toggle('bad',bad);}
+function stopGPS(){generation++;if(watchId!==null)navigator.geolocation?.clearWatch(watchId);watchId=null;current=null;previous=null;lastReceived=null;setGPS('GPS待機中');}
+function startGPS(){stopGPS();if(!navigator.geolocation){setGPS('GPS利用不可',true);message('位置情報を利用できません。保存した記録と出力は使えます。',true);return;}
+  const token=generation;setGPS('GPS取得中');
+  try{watchId=navigator.geolocation.watchPosition(p=>{if(token===generation&&active)onPosition(p);},e=>{if(token===generation&&active)onGpsError(e);},{enableHighAccuracy:true,maximumAge:1000,timeout:15000});}catch(e){onGpsError(e);}}
+function startPatrol(){if(!ready||active||state.draft)return;state.draft={patrol_id:uid('patrol'),app_version:APP_VERSION,started_at:iso(),settings_snapshot:{...CONFIG},active_segment:null};active=true;gapPending=false;lastSpotId=null;event('patrol_start');startGPS();persist();render();message('今の道路の状態を選んでください。');}
+function startSegment(code,p,reason,at=iso()){
+  state.draft.active_segment={...base('segment'),started_at:at,ended_at:null,eval_code:code,eval_label:LABELS[code],original_eval_code:code,points:[clone(p)],record_status:'recording',start_reason:reason,split_reason:null};
+}
+function appendBoundary(p){const s=segment(),last=s?.points.at(-1);if(!s||!p)return;if(last?.point_id===p.point_id)return;if(last?.observed_at===p.observed_at&&last.lat===p.lat&&last.lng===p.lng)return;s.points.push(clone(p));}
+function finishSegment(reason,status='complete',at=iso()){
+  const s=segment();if(!s)return;s.ended_at=at;s.record_status=status;s.split_reason=reason;geometryMeta(s);state.records.push(s);state.draft.active_segment=null;event('segment_finished',{record_id:s.id,split_reason:reason});
+}
+function splitForGap(p){const s=segment();if(!s)return;const code=s.eval_code;const end=s.points.at(-1)?.received_at||s.started_at;finishSegment('gps_gap','complete',end);startSegment(code,p,'gps_gap_continue',iso());event('gps_gap',{record_id:segment().id,point_id:p.point_id});}
+function onGpsError(err){current=null;previous=null;gapPending=true;setGPS(err?.code===1?'位置情報が未許可':'GPS取得待ち',true);event('gps_error',{code:number(err?.code)});persist();message(err?.code===1?'位置情報の利用を許可してください。':'GPSを取得できていません。記録の空白は自動で分けて残します。',true);}
+function onPosition(pos){
+  if(!active)return;
+  const now=Date.now(),received=iso(),c=pos.coords||{};
+  if(!coord({lat:c.latitude,lng:c.longitude})||!Number.isFinite(pos.timestamp)||pos.timestamp<=0){current=null;gapPending=true;setGPS('GPS再取得中',true);return;}
+  const age=now-pos.timestamp;if(age>CONFIG.stale_position_ms||age< -1000){current=null;gapPending=true;setGPS('GPS再取得中',true);return;}
+  const gap=gapPending||(lastReceived!==null&&now-lastReceived>CONFIG.stale_position_ms);
+  const a=number(c.accuracy),h=number(c.heading);
+  const p={point_id:uid('pt'),observed_at:new Date(pos.timestamp).toISOString(),received_at:received,lat:Number(c.latitude),lng:Number(c.longitude),accuracy_m:a!=null&&a>=0?a:null,direction_deg:h===null?null:Math.round(angle(h))%360,direction_source:h===null?'unknown':'gps',quality_flags:[]};
+  if(p.accuracy_m===null)addFlag(p.quality_flags,'accuracy_unknown');else if(p.accuracy_m>CONFIG.low_accuracy_m)addFlag(p.quality_flags,'low_accuracy');
+  if(h===null&&previous&&!gap&&distance(previous,p)>=CONFIG.point_distance_m){p.direction_deg=bearing(previous,p);p.direction_source='computed';}
+  if(previous&&pos.timestamp<Date.parse(previous.observed_at)){current=null;gapPending=true;setGPS('GPS再取得中',true);return;}
+  if(previous&&pos.timestamp===Date.parse(previous.observed_at)&&p.lat===previous.lat&&p.lng===previous.lng){current=previous;return;}
+  current=p;previous=p;lastReceived=now;
+  setGPS(p.quality_flags.length?'GPS精度低下':'GPS良好',p.quality_flags.length>0);
+  const s=segment();
+  if(s){if(gap)splitForGap(p);else{const last=s.points.at(-1),elapsed=Date.parse(received)-Date.parse(last.received_at||s.started_at);if(elapsed<CONFIG.point_interval_ms&&distance(last,p)<CONFIG.point_distance_m){gapPending=false;return;}s.points.push(clone(p));}persist();renderLive();}
+  gapPending=false;
+}
+function switchEval(code){if(!active||!Object.hasOwn(LABELS,code))return;if(segment()?.eval_code===code){message(code+'を継続中です。');return;}const p=requirePoint();if(!p)return;const at=iso();if(segment()){appendBoundary(p);finishSegment('eval_change','complete',at);}startSegment(code,p,'eval_change',at);event('eval_switch',{eval_code:code,point_id:p.point_id});persist();render();message(code+' '+LABELS[code]+'で記録しています。');}
+function addSpot(code){if(!active||!Object.hasOwn(SPOTS,code))return;const p=requirePoint();if(!p)return;const r=geometryMeta({...base('spot'),created_at:iso(),spot_code:code,spot_label:SPOTS[code],eval_code:null,eval_label:null,point:p});state.records.push(r);lastSpotId=r.id;event('spot_added',{record_id:r.id,spot_code:code,point_id:p.point_id});persist();render();$('#spotMessage').textContent=SPOTS[code]+'を記録しました';}
+function undoSpot(){if(!lastSpotId)return;const i=state.records.findIndex(r=>r.id===lastSpotId&&r.kind==='spot');if(i<0)return;state.records.splice(i,1);event('spot_cancelled',{record_id:lastSpotId});lastSpotId=null;persist();render();message('直前の場所の記録を取り消しました。');}
+function endPatrol(){if(!active)return;const p=freshPoint();if(segment()){if(p&&!gapPending)appendBoundary(p);finishSegment('patrol_end');}event('patrol_end');state.draft=null;active=false;lastSpotId=null;stopGPS();persist();render();message('巡回を終了しました。');}
+function resumeDraft(){if(active||!state.draft)return;const old=segment(),code=old?.eval_code||null;
+  // Old and new criteria never coexist within a continued observation.
+  if(old){const end=old.points.at(-1)?.received_at||old.started_at;finishSegment('closed_after_reload','complete',end||iso());}
+  const resumeOf=state.draft.patrol_id;state.draft={patrol_id:uid('patrol'),app_version:APP_VERSION,started_at:iso(),settings_snapshot:{...CONFIG},active_segment:null};active=true;gapPending=true;lastSpotId=null;event('patrol_resume',{previous_patrol_id:resumeOf,previous_eval_code:code});startGPS();persist();render();message('巡回を再開しました。今の道路の状態を選んでください。');}
+function closeDraft(){if(active||!state.draft)return;const s=segment();if(s)finishSegment('closed_after_reload','complete',s.points.at(-1)?.received_at||s.started_at||iso());event('draft_closed');state.draft=null;stopGPS();persist();render();message('ここまでの記録を保存して終了しました。');}
+
+const CSV_FIELDS=['record_id','record_type','patrol_id','start_time','end_time','eval_code','eval_label','spot_code','spot_label','start_lat','start_lng','end_lat','end_lng','representative_lat','representative_lng','observed_length_m','point_count','record_status','quality_flags','geometry_status','length_method','schema_version','app_version','criteria_version','legacy','sample'];
+function exportRecords(){return state.records.filter(r=>r.record_status==='complete'||r.record_status==='interrupted');}
+function publicRecord(r){
+  const ps=points(r),a=ps[0],b=ps.at(-1),rep=ps[Math.floor(ps.length/2)],g=geometryMeta(clone(r));
+  return {record_id:r.id,record_type:r.kind,patrol_id:r.patrol_id||null,start_time:startTime(r)||null,end_time:r.kind==='segment'?r.ended_at||null:null,eval_code:r.kind==='segment'?r.eval_code:null,eval_label:r.kind==='segment'?r.eval_label:null,spot_code:r.kind==='spot'?r.spot_code||null:null,spot_label:r.kind==='spot'?r.spot_label||r.spot_type||null:null,start_lat:a.lat,start_lng:a.lng,end_lat:b.lat,end_lng:b.lng,representative_lat:rep.lat,representative_lng:rep.lng,observed_length_m:g.length_m===null?null:Math.round(g.length_m*100)/100,point_count:ps.length,record_status:r.record_status,quality_flags:g.quality_flags,geometry_status:g.geometry_status,length_method:g.length_method,schema_version:3,app_version:r.app_version||'unknown',criteria_version:r.criteria_version||null,legacy:r.legacy===true,sample:r.sample===true};
+}
+function geoJSON(list=exportRecords()){
+  return {type:'FeatureCollection',schema_version:3,exporter_app_version:APP_VERSION,exported_at:iso(),export_scope:'all_closed_records',sample:list.some(r=>r.sample===true),sample_notice:list.some(r=>r.sample===true)?'架空サンプルを含みます。実測データではありません。':null,features:list.map(r=>{const ps=points(r),isLine=r.kind==='segment'&&ps.length>1;return {type:'Feature',id:r.id,geometry:{type:isLine?'LineString':'Point',coordinates:isLine?ps.map(p=>[p.lng,p.lat]):[ps[0].lng,ps[0].lat]},properties:{...publicRecord(r),point_meta:ps.map((p,i)=>({point_id:p.point_id,sequence:i+1,observed_at:p.observed_at||null,received_at:p.received_at||null,accuracy_m:p.accuracy_m??null,direction_deg:p.direction_deg??null,direction_source:p.direction_source||'unknown',quality_flags:flags(p.quality_flags)}))}};})};
+}
+function csv(list=exportRecords()){const escape=v=>'"'+String(v==null?'':Array.isArray(v)?JSON.stringify(v):v).replace(/"/g,'""')+'"';return '\ufeff'+CSV_FIELDS.map(escape).join(',')+'\r\n'+list.map(r=>{const o=publicRecord(r);return CSV_FIELDS.map(k=>escape(o[k])).join(',');}).join('\r\n')+'\r\n';}
+function backup(){return {...clone(state),exported_at:iso(),sample:state.records.some(r=>r.sample===true)||state.draft?.sample===true,sample_notice:state.records.some(r=>r.sample===true)||state.draft?.sample===true?'架空サンプルを含みます。実測データではありません。':null,storage_status:{persisted_revision:savedRevision,current_revision:revision,save_failed:saveFailed,read_blocked:readBlocked},collection_settings:{...CONFIG}};}
+function filename(prefix,ext){const t=new Date().toLocaleString('sv-SE',{timeZone:'Asia/Tokyo',hour12:false}).replace(/[-: ]/g,'').slice(0,12);return prefix+'_'+t+'.'+ext;}
+function download(content,prefix,ext,type){const blob=new Blob([content],{type:type+';charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename(prefix,ext);document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+async function restoreFile(file){
+  if(!file)return;if(active||state.draft){message('巡回を終了してから復元してください。中断分は巡回画面で終了できます。',true);return;}
+  try{const data=JSON.parse((await file.text()).replace(/^\ufeff/,''));if(!Array.isArray(data)&&!Array.isArray(data?.records))throw new Error('バックアップJSONではありません');const count=Array.isArray(data)?data.length:data.records.length;if(!confirm(count+'件を確認して追加します。現在の記録は上書きしません。'))return;const result=importPayload(data,file.name);persist();render();message(importDescription(result),result.errors>0||result.conflicts>0||result.draft==='conflict');}
+  catch(e){message('復元できませんでした。'+e.message,true);}finally{$('#importFile').value='';}
+}
+
+function renderLive(){
+  const s=segment();$('#patrolState').textContent=active?'巡回中':state.draft?'中断した記録があります':'準備できました';
+  $('#activeState').textContent=s?(s.eval_code+' '+s.eval_label+(active?'で記録中':'')):active?'今の道路の状態は？':'巡回を始めましょう';
+  $('#recordHint').textContent=active?(s?'状態が変わったときだけ押してください。':'A・B・Cを選ぶと道路の状態を記録します。'):state.draft?'保存済みの記録から再開できます。':'開始したら、今の道路の状態を選んでください。';
+  $('#livePanel').dataset.eval=s?.eval_code||'';$('#btnStart').hidden=active||!!state.draft;$('#btnStart').disabled=!ready||readBlocked;$('#btnEnd').hidden=!active;$('#draftActions').hidden=active||!state.draft;
+  $$('.evalBtn').forEach(b=>{b.disabled=!active;b.setAttribute('aria-pressed',String(active&&s?.eval_code===b.dataset.eval));});$$('.spotBtn').forEach(b=>b.disabled=!active);
+  $('#spotToast').hidden=!lastSpotId;$('#btnImport').disabled=!ready||active||!!state.draft||readBlocked;updateSave();
+}
+function filteredRecords(){const f=$('#filterFrom').value,t=$('#filterTo').value,evalCode=$('#filterEval').value,spot=$('#filterSpot').value;return state.records.filter(r=>{const ts=startTime(r);if((f||t)&&!validTime(ts))return false;const n=Date.parse(ts);if(f&&n<Date.parse(f+'T00:00:00+09:00'))return false;if(t&&n>Date.parse(t+'T23:59:59.999+09:00'))return false;if(evalCode==='spot'&&r.kind!=='spot')return false;if(evalCode&&evalCode!=='spot'&&r.eval_code!==evalCode)return false;if(spot&&(r.spot_label||r.spot_type)!==spot)return false;return true;});}
+function setRange(r){range=r;const today=jstDate();$('#filterFrom').value=r==='all'?'':r==='today'?today:jstDate(new Date(Date.parse(today+'T12:00:00+09:00')-6*86400000));$('#filterTo').value=r==='all'?'':today;renderHistory();refreshMap();}
+function renderHistory(){
+  const selected=$('#filterSpot').value,labels=[...new Set([...Object.values(SPOTS),...state.records.filter(r=>r.kind==='spot').map(r=>r.spot_label||r.spot_type).filter(Boolean)])];$('#filterSpot').replaceChildren(new Option('すべて',''),...labels.map(v=>new Option(v,v)));$('#filterSpot').value=selected;
+  const rows=filteredRecords(),segments=rows.filter(r=>r.kind==='segment'),spots=rows.filter(r=>r.kind==='spot');$('#stats').replaceChildren();
+  for(const text of ['観測記録 '+rows.length+'件','気になる場所 '+spots.length+'件',...['A','B','C'].map(c=>c+' 観測延長 '+Math.round(segments.filter(r=>r.eval_code===c).reduce((n,r)=>n+(geometryMeta(clone(r)).length_m||0),0))+'m')]){const e=document.createElement('span');e.textContent=text;$('#stats').append(e);}
+  const box=$('#recordList');box.replaceChildren();if(!rows.length){const p=document.createElement('p');p.className='hint';p.textContent='この条件の記録はありません。';box.append(p);}
+  for(const r of rows.slice().reverse()){
+    const div=document.createElement('div'),badge=document.createElement('span'),body=document.createElement('div'),title=document.createElement('strong'),meta=document.createElement('p');div.className='entry';badge.className='badge '+(r.kind==='segment'?r.eval_code:'S');badge.textContent=r.kind==='segment'?r.eval_code:'!';title.textContent=r.kind==='segment'?r.eval_code+' '+r.eval_label:r.spot_label||r.spot_type||'気になる場所';meta.textContent=fmt(startTime(r))+(r.legacy?' ／ 過去の基準で記録':'')+(r.sample?' ／ 架空サンプル':'');body.append(title,meta);
+    if(r.record_status==='interrupted'||flags(r.quality_flags).some(f=>['low_accuracy','accuracy_unknown'].includes(f))){const p=document.createElement('p');p.textContent=r.record_status==='interrupted'?'中断までの記録':'位置の精度に注意';body.append(p);}div.append(badge,body);box.append(div);
+  }
+}
+function render(){renderLive();renderHistory();const count=exportRecords().length;$('#exportCount').textContent='出力対象：全'+count+'件';$('#draftHint').textContent=state.draft?'巡回中・中断中の未確定部分は含みません。全体の保管にはバックアップを使ってください。':'';$('#sampleBanner').hidden=!state.records.some(r=>r.sample)||!ready;['#btnExportGeo','#btnExportCSV','#btnBackup'].forEach(sel=>$(sel).disabled=!ready);if($('#history').classList.contains('active'))refreshMap();}
+function showTab(id){$$('.tab').forEach(e=>e.classList.toggle('active',e.id===id));$$('.tabBtn').forEach(e=>e.setAttribute('aria-selected',String(e.dataset.tab===id)));if(id==='history')refreshMap();}
+function color(code){return {A:'#176440',B:'#a26810',C:'#ac303b'}[code]||'#315e67';}
+function popup(r){const el=document.createElement('div');el.textContent=(r.kind==='segment'?r.eval_code+' '+r.eval_label:r.spot_label||r.spot_type)+' ／ '+fmt(startTime(r));return el;}
+function refreshMap(){
+  if(typeof L==='undefined'){if(mapUnavailable)$('#map').innerHTML='<div class="mapFallback">地図を読み込めません。記録・一覧・出力はそのまま使えます。</div>';return;}
+  if(!map){$('#map').replaceChildren();map=L.map('map').setView([35.61,139.54],13);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);mapLayer=L.layerGroup().addTo(map);}
+  mapLayer.clearLayers();const bounds=[];for(const r of filteredRecords()){
+    const ps=points(r),ll=ps.map(p=>[p.lat,p.lng]);if(r.kind==='segment'&&ll.length>1)L.polyline(ll,{color:color(r.eval_code),weight:5,opacity:.8}).addTo(mapLayer).bindPopup(popup(r));
+    const p=ps[Math.floor(ps.length/2)];if(p){if(p.direction_deg==null)L.circleMarker([p.lat,p.lng],{radius:6,color:color(r.eval_code),fillOpacity:.8}).addTo(mapLayer).bindPopup(popup(r));else L.marker([p.lat,p.lng],{icon:L.divIcon({className:'',html:'<div class="arrow" style="color:'+color(r.eval_code)+';transform:rotate('+Number(p.direction_deg)+'deg)">↑</div>',iconSize:[24,24],iconAnchor:[12,12]})}).addTo(mapLayer).bindPopup(popup(r));}bounds.push(...ll);
+  }if(bounds.length)map.fitBounds(bounds,{padding:[24,24],maxZoom:17});setTimeout(()=>map.invalidateSize(),0);
+}
+function loadMap(){const s=document.createElement('script');s.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';s.crossOrigin='';s.onload=()=>{if($('#history').classList.contains('active'))refreshMap();};s.onerror=()=>{mapUnavailable=true;refreshMap();};document.head.append(s);}
+function bind(){
+  $$('.tabBtn').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
+  $('#btnStart').onclick=startPatrol;$('#btnEnd').onclick=endPatrol;$('#btnResume').onclick=resumeDraft;$('#btnClose').onclick=closeDraft;
+  $$('.evalBtn').forEach(b=>b.onclick=()=>switchEval(b.dataset.eval));$$('.spotBtn').forEach(b=>b.onclick=()=>addSpot(b.dataset.spot));$('#btnUndo').onclick=undoSpot;
+  $$('[data-range]').forEach(b=>b.onclick=()=>setRange(b.dataset.range));['#filterFrom','#filterTo','#filterEval','#filterSpot'].forEach(sel=>$(sel).onchange=()=>{renderHistory();refreshMap();});
+  $('#btnExportGeo').onclick=()=>download(JSON.stringify(geoJSON(),null,2),'road_patrol_data','geojson','application/geo+json');$('#btnExportCSV').onclick=()=>download(csv(),'road_patrol_list','csv','text/csv');$('#btnBackup').onclick=()=>download(JSON.stringify(backup(),null,2),'road_patrol_backup','json','application/json');$('#btnImport').onclick=()=>$('#importFile').click();$('#importFile').onchange=e=>restoreFile(e.target.files[0]);
+  window.addEventListener('pagehide',()=>{if(state.draft){gapPending=true;event('page_hidden');persist();}});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden&&active){gapPending=true;event('visibility_hidden');persist();}else if(active){current=null;previous=null;gapPending=true;setGPS('GPS再取得中',true);}});
+  setInterval(()=>{if(active&&current&&!freshPoint()){current=null;previous=null;gapPending=true;setGPS('GPS再取得中',true);}},1000);
+}
+async function init(){
+  bind();await openStorage();let existing=null;
+  try{existing=await readStorage();if(existing){if(!Array.isArray(existing.records)||!Array.isArray(existing.source_archives)||!Array.isArray(existing.operation_events))throw new Error('保存データの形式を確認できません');state=existing;}}
+  catch(e){readBlocked=true;storageError=String(e.message);message('保存データを読み込めません。元のデータは上書きしません。別の保存元でバックアップから復元してください。',true);}
+  let reports=[];if(!readBlocked){try{reports=migrateLocal();}catch(e){message('旧保存領域を読めません。旧HTMLのバックアップJSONから復元してください。',true);}}
+  ready=true;active=false;setRange('7days');render();if(!readBlocked)persist();
+  if(reports.length)message('過去の記録を確認しました。'+reports.map(importDescription).join('／'),reports.some(r=>r.errors||r.conflicts));
+  else if(state.draft)message('中断した巡回が残っています。再開するか、ここまで保存して終了できます。');
+  loadMap();
+}
+/* TEST_HOOK */
+void init();
+})();
+</script>
+</body>
+</html>
